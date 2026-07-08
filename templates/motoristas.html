@@ -1,32 +1,46 @@
 {% extends "base.html" %}
-{% block title %}Motoristas{% endblock %}
+{% block title %}Motoristas — Gestão de Frota{% endblock %}
 {% block content %}
-<div class="d-flex justify-content-between align-items-center mb-3">
-  <h1>Motoristas</h1>
-  <a href="{{ url_for('novo_motorista') }}" class="btn btn-primary">+ Novo Motorista</a>
+<div class="page-header">
+  <div>
+    <h1 class="page-title">Motoristas</h1>
+    <p class="page-subtitle">{{ motoristas|length }} motorista(s) cadastrado(s)</p>
+  </div>
+  <a href="{{ url_for('novo_motorista') }}" class="btn btn-primary"><i class="bi bi-plus-lg me-1"></i>Novo motorista</a>
 </div>
-<table class="table table-striped bg-white shadow-sm">
-  <thead>
-    <tr><th>Nome</th><th>CNH</th><th>Categoria</th><th>Telefone</th><th>Veículo vinculado</th><th></th></tr>
-  </thead>
-  <tbody>
-    {% for m in motoristas %}
-    <tr>
-      <td>{{ m.nome }}</td>
-      <td>{{ m.cnh }}</td>
-      <td>{{ m.categoria_cnh }}</td>
-      <td>{{ m.telefone or "-" }}</td>
-      <td>{{ m.veiculo.placa if m.veiculo else "-" }}</td>
-      <td class="text-end">
-        <a href="{{ url_for('editar_motorista', motorista_id=m.id) }}" class="btn btn-sm btn-outline-secondary">Editar</a>
-        <form action="{{ url_for('excluir_motorista', motorista_id=m.id) }}" method="post" class="d-inline" onsubmit="return confirm('Remover este motorista?');">
-          <button type="submit" class="btn btn-sm btn-outline-danger">Excluir</button>
-        </form>
-      </td>
-    </tr>
-    {% else %}
-    <tr><td colspan="6" class="text-center text-muted">Nenhum motorista cadastrado ainda.</td></tr>
-    {% endfor %}
-  </tbody>
-</table>
+
+<div class="card table-card">
+  {% if motoristas %}
+  <div class="table-responsive">
+    <table class="table">
+      <thead>
+        <tr><th>Nome</th><th>CNH</th><th>Categoria</th><th>Telefone</th><th>Veículo vinculado</th><th class="text-end">Ações</th></tr>
+      </thead>
+      <tbody>
+        {% for m in motoristas %}
+        <tr>
+          <td class="cell-strong">{{ m.nome }}</td>
+          <td class="cell-muted">{{ m.cnh }}</td>
+          <td><span class="badge-soft badge-soft-info">{{ m.categoria_cnh }}</span></td>
+          <td class="cell-muted">{{ m.telefone or "—" }}</td>
+          <td>{{ m.veiculo.placa if m.veiculo else "—" }}</td>
+          <td class="text-end text-nowrap">
+            <a href="{{ url_for('editar_motorista', motorista_id=m.id) }}" class="btn btn-sm btn-ghost" title="Editar"><i class="bi bi-pencil"></i></a>
+            <form action="{{ url_for('excluir_motorista', motorista_id=m.id) }}" method="post" class="d-inline" onsubmit="return confirm('Remover o motorista {{ m.nome }}?');">
+              <button type="submit" class="btn btn-sm btn-ghost danger" title="Excluir"><i class="bi bi-trash"></i></button>
+            </form>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}
+  <div class="empty-state">
+    <i class="bi bi-person-badge"></i>
+    <p>Nenhum motorista cadastrado ainda.</p>
+    <a href="{{ url_for('novo_motorista') }}" class="btn btn-primary btn-sm"><i class="bi bi-plus-lg me-1"></i>Cadastrar o primeiro motorista</a>
+  </div>
+  {% endif %}
+</div>
 {% endblock %}

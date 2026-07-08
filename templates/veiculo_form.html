@@ -1,37 +1,50 @@
 {% extends "base.html" %}
-{% block title %}{{ "Editar" if veiculo else "Novo" }} Veículo{% endblock %}
+{% block title %}{{ "Editar" if veiculo else "Novo" }} veículo — Gestão de Frota{% endblock %}
 {% block content %}
-<h1 class="mb-4">{{ "Editar" if veiculo else "Novo" }} Veículo</h1>
-<form method="post" class="bg-white p-4 shadow-sm rounded" style="max-width: 500px;">
-  <div class="mb-3">
-    <label class="form-label">Placa</label>
-    <input type="text" name="placa" class="form-control" value="{{ veiculo.placa if veiculo else '' }}" required maxlength="10">
+<nav class="breadcrumb">
+  <a href="{{ url_for('listar_veiculos') }}">Veículos</a>
+  <span class="mx-2 text-muted">/</span>
+  <span class="active">{{ "Editar " + veiculo.placa if veiculo else "Novo veículo" }}</span>
+</nav>
+
+<div class="page-header">
+  <h1 class="page-title">{{ "Editar veículo" if veiculo else "Novo veículo" }}</h1>
+</div>
+
+<form method="post" class="card form-card">
+  <div class="row g-3">
+    <div class="col-md-4">
+      <label class="form-label">Placa <span class="req">*</span></label>
+      <input type="text" name="placa" class="form-control" value="{{ veiculo.placa if veiculo else '' }}" required maxlength="10" placeholder="ABC1D23">
+    </div>
+    <div class="col-md-4">
+      <label class="form-label">Marca <span class="req">*</span></label>
+      <input type="text" name="marca" class="form-control" value="{{ veiculo.marca if veiculo else '' }}" required placeholder="Fiat">
+    </div>
+    <div class="col-md-4">
+      <label class="form-label">Modelo <span class="req">*</span></label>
+      <input type="text" name="modelo" class="form-control" value="{{ veiculo.modelo if veiculo else '' }}" required placeholder="Strada">
+    </div>
+    <div class="col-md-4">
+      <label class="form-label">Ano <span class="req">*</span></label>
+      <input type="number" name="ano" class="form-control" value="{{ veiculo.ano if veiculo else '' }}" required min="1950" max="2100">
+    </div>
+    <div class="col-md-4">
+      <label class="form-label">Quilometragem atual <span class="req">*</span></label>
+      <input type="number" name="quilometragem" class="form-control" value="{{ veiculo.quilometragem if veiculo else 0 }}" required min="0">
+    </div>
+    <div class="col-md-4">
+      <label class="form-label">Status</label>
+      <select name="status" class="form-select">
+        <option value="ativo" {% if veiculo and veiculo.status == 'ativo' %}selected{% endif %}>Ativo</option>
+        <option value="manutencao" {% if veiculo and veiculo.status == 'manutencao' %}selected{% endif %}>Manutenção</option>
+        <option value="inativo" {% if veiculo and veiculo.status == 'inativo' %}selected{% endif %}>Inativo</option>
+      </select>
+    </div>
   </div>
-  <div class="mb-3">
-    <label class="form-label">Marca</label>
-    <input type="text" name="marca" class="form-control" value="{{ veiculo.marca if veiculo else '' }}" required>
+  <div class="mt-4 d-flex gap-2">
+    <button type="submit" class="btn btn-primary"><i class="bi bi-check-lg me-1"></i>Salvar</button>
+    <a href="{{ url_for('listar_veiculos') }}" class="btn btn-ghost">Cancelar</a>
   </div>
-  <div class="mb-3">
-    <label class="form-label">Modelo</label>
-    <input type="text" name="modelo" class="form-control" value="{{ veiculo.modelo if veiculo else '' }}" required>
-  </div>
-  <div class="mb-3">
-    <label class="form-label">Ano</label>
-    <input type="number" name="ano" class="form-control" value="{{ veiculo.ano if veiculo else '' }}" required min="1950" max="2100">
-  </div>
-  <div class="mb-3">
-    <label class="form-label">Quilometragem atual</label>
-    <input type="number" name="quilometragem" class="form-control" value="{{ veiculo.quilometragem if veiculo else 0 }}" required min="0">
-  </div>
-  <div class="mb-3">
-    <label class="form-label">Status</label>
-    <select name="status" class="form-select">
-      <option value="ativo" {% if veiculo and veiculo.status == 'ativo' %}selected{% endif %}>Ativo</option>
-      <option value="manutencao" {% if veiculo and veiculo.status == 'manutencao' %}selected{% endif %}>Manutenção</option>
-      <option value="inativo" {% if veiculo and veiculo.status == 'inativo' %}selected{% endif %}>Inativo</option>
-    </select>
-  </div>
-  <button type="submit" class="btn btn-primary">Salvar</button>
-  <a href="{{ url_for('listar_veiculos') }}" class="btn btn-link">Cancelar</a>
 </form>
 {% endblock %}

@@ -1,36 +1,51 @@
 {% extends "base.html" %}
-{% block title %}Manutenções{% endblock %}
+{% block title %}Manutenções — Gestão de Frota{% endblock %}
 {% block content %}
-<div class="d-flex justify-content-between align-items-center mb-3">
-  <h1>Manutenções</h1>
-  <a href="{{ url_for('nova_manutencao') }}" class="btn btn-primary">+ Nova Manutenção</a>
+<div class="page-header">
+  <div>
+    <h1 class="page-title">Manutenções</h1>
+    <p class="page-subtitle">{{ manutencoes|length }} registro(s)</p>
+  </div>
+  <a href="{{ url_for('nova_manutencao') }}" class="btn btn-primary"><i class="bi bi-plus-lg me-1"></i>Nova manutenção</a>
 </div>
-<table class="table table-striped bg-white shadow-sm">
-  <thead>
-    <tr><th>Veículo</th><th>Tipo</th><th>Data</th><th>KM</th><th>Custo</th><th>Próxima</th><th></th></tr>
-  </thead>
-  <tbody>
-    {% for m in manutencoes %}
-    <tr>
-      <td>{{ m.veiculo.placa }}</td>
-      <td>{{ m.tipo }}</td>
-      <td>{{ m.data.strftime('%d/%m/%Y') }}</td>
-      <td>{{ "{:,}".format(m.quilometragem).replace(",", ".") }}</td>
-      <td>R$ {{ "%.2f"|format(m.custo) }}</td>
-      <td>
-        {% if m.proxima_data %}{{ m.proxima_data.strftime('%d/%m/%Y') }}{% endif %}
-        {% if m.proxima_km %} ({{ "{:,}".format(m.proxima_km).replace(",", ".") }} km){% endif %}
-        {% if not m.proxima_data and not m.proxima_km %}-{% endif %}
-      </td>
-      <td class="text-end">
-        <form action="{{ url_for('excluir_manutencao', manutencao_id=m.id) }}" method="post" class="d-inline" onsubmit="return confirm('Remover este registro?');">
-          <button type="submit" class="btn btn-sm btn-outline-danger">Excluir</button>
-        </form>
-      </td>
-    </tr>
-    {% else %}
-    <tr><td colspan="7" class="text-center text-muted">Nenhuma manutenção registrada ainda.</td></tr>
-    {% endfor %}
-  </tbody>
-</table>
+
+<div class="card table-card">
+  {% if manutencoes %}
+  <div class="table-responsive">
+    <table class="table">
+      <thead>
+        <tr><th>Veículo</th><th>Tipo</th><th>Data</th><th class="text-end">KM</th><th class="text-end">Custo</th><th>Próxima prevista</th><th class="text-end">Ações</th></tr>
+      </thead>
+      <tbody>
+        {% for m in manutencoes %}
+        <tr>
+          <td class="cell-strong">{{ m.veiculo.placa }}</td>
+          <td>{{ m.tipo }}{% if m.descricao %} <i class="bi bi-info-circle text-secondary" title="{{ m.descricao }}"></i>{% endif %}</td>
+          <td class="cell-muted">{{ m.data|data_br }}</td>
+          <td class="text-end">{{ m.quilometragem|milhar }}</td>
+          <td class="text-end">{{ m.custo|brl }}</td>
+          <td class="cell-muted">
+            {% if m.proxima_data %}{{ m.proxima_data|data_br }}{% endif %}
+            {% if m.proxima_km %}{% if m.proxima_data %} · {% endif %}{{ m.proxima_km|milhar }} km{% endif %}
+            {% if not m.proxima_data and not m.proxima_km %}—{% endif %}
+          </td>
+          <td class="text-end text-nowrap">
+            <a href="{{ url_for('editar_manutencao', manutencao_id=m.id) }}" class="btn btn-sm btn-ghost" title="Editar"><i class="bi bi-pencil"></i></a>
+            <form action="{{ url_for('excluir_manutencao', manutencao_id=m.id) }}" method="post" class="d-inline" onsubmit="return confirm('Remover este registro de manutenção?');">
+              <button type="submit" class="btn btn-sm btn-ghost danger" title="Excluir"><i class="bi bi-trash"></i></button>
+            </form>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}
+  <div class="empty-state">
+    <i class="bi bi-wrench-adjustable"></i>
+    <p>Nenhuma manutenção registrada ainda.</p>
+    <a href="{{ url_for('nova_manutencao') }}" class="btn btn-primary btn-sm"><i class="bi bi-plus-lg me-1"></i>Registrar a primeira manutenção</a>
+  </div>
+  {% endif %}
+</div>
 {% endblock %}

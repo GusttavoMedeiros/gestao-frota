@@ -1,38 +1,119 @@
 {% extends "base.html" %}
-{% block title %}Início - Gestão de Frota{% endblock %}
+{% block title %}Painel — Gestão de Frota{% endblock %}
 {% block content %}
-<h1 class="mb-4">Painel Geral</h1>
+<div class="page-header">
+  <div>
+    <h1 class="page-title">Painel</h1>
+    <p class="page-subtitle">Visão geral da frota · {{ hoje|data_br }}</p>
+  </div>
+</div>
+
+<div class="row g-3 mb-4">
+  <div class="col-sm-6 col-xl-3">
+    <div class="card stat-card">
+      <div class="stat-icon blue"><i class="bi bi-truck"></i></div>
+      <div>
+        <div class="stat-label">Frota</div>
+        <div class="stat-value">{{ stats.veiculos_ativos }}<span class="stat-sub">/ {{ stats.total_veiculos }} ativos</span></div>
+      </div>
+    </div>
+  </div>
+  <div class="col-sm-6 col-xl-3">
+    <div class="card stat-card">
+      <div class="stat-icon amber"><i class="bi bi-wrench-adjustable"></i></div>
+      <div>
+        <div class="stat-label">Em manutenção</div>
+        <div class="stat-value">{{ stats.veiculos_manutencao }}</div>
+      </div>
+    </div>
+  </div>
+  <div class="col-sm-6 col-xl-3">
+    <div class="card stat-card">
+      <div class="stat-icon indigo"><i class="bi bi-person-badge"></i></div>
+      <div>
+        <div class="stat-label">Motoristas</div>
+        <div class="stat-value">{{ stats.total_motoristas }}</div>
+      </div>
+    </div>
+  </div>
+  <div class="col-sm-6 col-xl-3">
+    <div class="card stat-card">
+      <div class="stat-icon green"><i class="bi bi-cash-coin"></i></div>
+      <div>
+        <div class="stat-label">Custos do mês</div>
+        <div class="stat-value">{{ stats.custo_mes|brl }}</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+{% if alertas %}
+<div class="card mb-4">
+  <div class="card-header-flat"><i class="bi bi-bell-fill text-warning"></i> Manutenções a vencer</div>
+  <ul class="list-group list-group-flush alert-list">
+    {% for a in alertas %}
+    <li class="list-group-item">
+      <div><strong>{{ a.veiculo.placa }}</strong> <span class="cell-muted">· {{ a.tipo }}</span></div>
+      <span class="badge-soft badge-soft-{{ a.nivel }}">{{ a.texto }}</span>
+    </li>
+    {% endfor %}
+  </ul>
+</div>
+{% endif %}
+
 <div class="row g-3">
-  <div class="col-md-3">
-    <div class="card text-center shadow-sm">
-      <div class="card-body">
-        <h6 class="text-muted">Veículos cadastrados</h6>
-        <p class="display-6">{{ stats.total_veiculos }}</p>
+  <div class="col-lg-6">
+    <div class="card table-card h-100">
+      <div class="card-header-flat"><i class="bi bi-wrench-adjustable text-secondary"></i> Últimas manutenções</div>
+      {% if ultimas_manutencoes %}
+      <div class="table-responsive">
+        <table class="table">
+          <thead><tr><th>Veículo</th><th>Tipo</th><th>Data</th><th class="text-end">Custo</th></tr></thead>
+          <tbody>
+            {% for m in ultimas_manutencoes %}
+            <tr>
+              <td class="cell-strong">{{ m.veiculo.placa }}</td>
+              <td>{{ m.tipo }}</td>
+              <td class="cell-muted">{{ m.data|data_br }}</td>
+              <td class="text-end">{{ m.custo|brl }}</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
       </div>
+      {% else %}
+      <div class="empty-state">
+        <i class="bi bi-clipboard-check"></i>
+        <p>Nenhuma manutenção registrada ainda.</p>
+      </div>
+      {% endif %}
     </div>
   </div>
-  <div class="col-md-3">
-    <div class="card text-center shadow-sm">
-      <div class="card-body">
-        <h6 class="text-muted">Veículos ativos</h6>
-        <p class="display-6 text-success">{{ stats.veiculos_ativos }}</p>
+  <div class="col-lg-6">
+    <div class="card table-card h-100">
+      <div class="card-header-flat"><i class="bi bi-fuel-pump text-secondary"></i> Últimos abastecimentos</div>
+      {% if ultimos_abastecimentos %}
+      <div class="table-responsive">
+        <table class="table">
+          <thead><tr><th>Veículo</th><th>Data</th><th class="text-end">Litros</th><th class="text-end">Valor</th></tr></thead>
+          <tbody>
+            {% for a in ultimos_abastecimentos %}
+            <tr>
+              <td class="cell-strong">{{ a.veiculo.placa }}</td>
+              <td class="cell-muted">{{ a.data|data_br }}</td>
+              <td class="text-end">{{ "%.1f"|format(a.litros) }} L</td>
+              <td class="text-end">{{ a.valor_total|brl }}</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
       </div>
-    </div>
-  </div>
-  <div class="col-md-3">
-    <div class="card text-center shadow-sm">
-      <div class="card-body">
-        <h6 class="text-muted">Em manutenção</h6>
-        <p class="display-6 text-warning">{{ stats.veiculos_manutencao }}</p>
+      {% else %}
+      <div class="empty-state">
+        <i class="bi bi-droplet"></i>
+        <p>Nenhum abastecimento registrado ainda.</p>
       </div>
-    </div>
-  </div>
-  <div class="col-md-3">
-    <div class="card text-center shadow-sm">
-      <div class="card-body">
-        <h6 class="text-muted">Motoristas cadastrados</h6>
-        <p class="display-6">{{ stats.total_motoristas }}</p>
-      </div>
+      {% endif %}
     </div>
   </div>
 </div>

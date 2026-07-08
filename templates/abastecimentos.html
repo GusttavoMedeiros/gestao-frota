@@ -1,33 +1,49 @@
 {% extends "base.html" %}
-{% block title %}Abastecimentos{% endblock %}
+{% block title %}Abastecimentos — Gestão de Frota{% endblock %}
 {% block content %}
-<div class="d-flex justify-content-between align-items-center mb-3">
-  <h1>Abastecimentos</h1>
-  <a href="{{ url_for('novo_abastecimento') }}" class="btn btn-primary">+ Novo Abastecimento</a>
+<div class="page-header">
+  <div>
+    <h1 class="page-title">Abastecimentos</h1>
+    <p class="page-subtitle">{{ abastecimentos|length }} registro(s)</p>
+  </div>
+  <a href="{{ url_for('novo_abastecimento') }}" class="btn btn-primary"><i class="bi bi-plus-lg me-1"></i>Novo abastecimento</a>
 </div>
-<table class="table table-striped bg-white shadow-sm">
-  <thead>
-    <tr><th>Veículo</th><th>Motorista</th><th>Data</th><th>Combustível</th><th>Litros</th><th>Valor</th><th>KM</th><th></th></tr>
-  </thead>
-  <tbody>
-    {% for a in abastecimentos %}
-    <tr>
-      <td>{{ a.veiculo.placa }}</td>
-      <td>{{ a.motorista.nome if a.motorista else "-" }}</td>
-      <td>{{ a.data.strftime('%d/%m/%Y') }}</td>
-      <td>{{ a.tipo_combustivel|capitalize }}</td>
-      <td>{{ "%.1f"|format(a.litros) }} L</td>
-      <td>R$ {{ "%.2f"|format(a.valor_total) }}</td>
-      <td>{{ "{:,}".format(a.quilometragem).replace(",", ".") }}</td>
-      <td class="text-end">
-        <form action="{{ url_for('excluir_abastecimento', abastecimento_id=a.id) }}" method="post" class="d-inline" onsubmit="return confirm('Remover este registro?');">
-          <button type="submit" class="btn btn-sm btn-outline-danger">Excluir</button>
-        </form>
-      </td>
-    </tr>
-    {% else %}
-    <tr><td colspan="8" class="text-center text-muted">Nenhum abastecimento registrado ainda.</td></tr>
-    {% endfor %}
-  </tbody>
-</table>
+
+<div class="card table-card">
+  {% if abastecimentos %}
+  <div class="table-responsive">
+    <table class="table">
+      <thead>
+        <tr><th>Veículo</th><th>Motorista</th><th>Data</th><th>Combustível</th><th class="text-end">Litros</th><th class="text-end">Valor</th><th class="text-end">KM</th><th class="text-end">Consumo</th><th class="text-end">Ações</th></tr>
+      </thead>
+      <tbody>
+        {% for a in abastecimentos %}
+        <tr>
+          <td class="cell-strong">{{ a.veiculo.placa }}</td>
+          <td class="cell-muted">{{ a.motorista.nome if a.motorista else "—" }}</td>
+          <td class="cell-muted">{{ a.data|data_br }}</td>
+          <td><span class="badge-soft badge-soft-secondary">{{ a.tipo_combustivel|capitalize }}</span></td>
+          <td class="text-end">{{ "%.1f"|format(a.litros) }} L</td>
+          <td class="text-end">{{ a.valor_total|brl }}</td>
+          <td class="text-end">{{ a.quilometragem|milhar }}</td>
+          <td class="text-end">{% if a.consumo %}{{ "%.1f"|format(a.consumo) }} km/L{% else %}—{% endif %}</td>
+          <td class="text-end text-nowrap">
+            <a href="{{ url_for('editar_abastecimento', abastecimento_id=a.id) }}" class="btn btn-sm btn-ghost" title="Editar"><i class="bi bi-pencil"></i></a>
+            <form action="{{ url_for('excluir_abastecimento', abastecimento_id=a.id) }}" method="post" class="d-inline" onsubmit="return confirm('Remover este registro de abastecimento?');">
+              <button type="submit" class="btn btn-sm btn-ghost danger" title="Excluir"><i class="bi bi-trash"></i></button>
+            </form>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}
+  <div class="empty-state">
+    <i class="bi bi-fuel-pump"></i>
+    <p>Nenhum abastecimento registrado ainda.</p>
+    <a href="{{ url_for('novo_abastecimento') }}" class="btn btn-primary btn-sm"><i class="bi bi-plus-lg me-1"></i>Registrar o primeiro abastecimento</a>
+  </div>
+  {% endif %}
+</div>
 {% endblock %}

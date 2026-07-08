@@ -1,46 +1,61 @@
 {% extends "base.html" %}
-{% block title %}Nova Manutenção{% endblock %}
+{% block title %}{{ "Editar" if manutencao else "Nova" }} manutenção — Gestão de Frota{% endblock %}
 {% block content %}
-<h1 class="mb-4">Nova Manutenção</h1>
-<form method="post" class="bg-white p-4 shadow-sm rounded" style="max-width: 500px;">
-  <div class="mb-3">
-    <label class="form-label">Veículo</label>
-    <select name="veiculo_id" class="form-select" required>
-      <option value="" disabled selected>Selecione...</option>
-      {% for v in veiculos %}
-      <option value="{{ v.id }}">{{ v.placa }} - {{ v.marca }} {{ v.modelo }}</option>
-      {% endfor %}
-    </select>
+<nav class="breadcrumb">
+  <a href="{{ url_for('listar_manutencoes') }}">Manutenções</a>
+  <span class="mx-2 text-muted">/</span>
+  <span class="active">{{ "Editar registro" if manutencao else "Nova manutenção" }}</span>
+</nav>
+
+<div class="page-header">
+  <h1 class="page-title">{{ "Editar manutenção" if manutencao else "Nova manutenção" }}</h1>
+</div>
+
+<form method="post" class="card form-card">
+  <div class="row g-3">
+    <div class="col-md-6">
+      <label class="form-label">Veículo <span class="req">*</span></label>
+      <select name="veiculo_id" class="form-select" required>
+        <option value="" disabled {% if not manutencao %}selected{% endif %}>Selecione...</option>
+        {% for v in veiculos %}
+        <option value="{{ v.id }}" {% if manutencao and manutencao.veiculo_id == v.id %}selected{% endif %}>{{ v.placa }} — {{ v.marca }} {{ v.modelo }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div class="col-md-6">
+      <label class="form-label">Tipo de manutenção <span class="req">*</span></label>
+      <input type="text" name="tipo" class="form-control" value="{{ manutencao.tipo if manutencao else '' }}" placeholder="Troca de óleo, Revisão, Pneus..." required>
+    </div>
+    <div class="col-md-4">
+      <label class="form-label">Data <span class="req">*</span></label>
+      <input type="date" name="data" class="form-control" value="{{ manutencao.data.isoformat() if manutencao else today }}" required>
+    </div>
+    <div class="col-md-4">
+      <label class="form-label">KM na data <span class="req">*</span></label>
+      <input type="number" name="quilometragem" class="form-control" value="{{ manutencao.quilometragem if manutencao else '' }}" min="0" required>
+    </div>
+    <div class="col-md-4">
+      <label class="form-label">Custo (R$)</label>
+      <input type="number" step="0.01" name="custo" class="form-control" value="{{ manutencao.custo if manutencao else 0 }}" min="0">
+    </div>
+    <div class="col-12">
+      <label class="form-label">Descrição</label>
+      <textarea name="descricao" class="form-control" rows="2" placeholder="Detalhes do serviço realizado...">{{ manutencao.descricao if manutencao else '' }}</textarea>
+    </div>
+    <div class="col-md-6">
+      <label class="form-label">Próxima manutenção (data)</label>
+      <input type="date" name="proxima_data" class="form-control" value="{{ manutencao.proxima_data.isoformat() if manutencao and manutencao.proxima_data else '' }}">
+      <div class="form-hint">Opcional — gera alerta no painel quando estiver próxima.</div>
+    </div>
+    <div class="col-md-6">
+      <label class="form-label">Próxima manutenção (km)</label>
+      <input type="number" name="proxima_km" class="form-control" value="{{ manutencao.proxima_km if manutencao and manutencao.proxima_km else '' }}" min="0">
+      <div class="form-hint">Opcional — alerta quando o veículo se aproximar desta quilometragem.</div>
+    </div>
   </div>
-  <div class="mb-3">
-    <label class="form-label">Tipo de manutenção</label>
-    <input type="text" name="tipo" class="form-control" placeholder="Ex: Troca de óleo, Revisão, Pneus" required>
+  <div class="mt-4 d-flex gap-2">
+    <button type="submit" class="btn btn-primary"><i class="bi bi-check-lg me-1"></i>Salvar</button>
+    <a href="{{ url_for('listar_manutencoes') }}" class="btn btn-ghost">Cancelar</a>
   </div>
-  <div class="mb-3">
-    <label class="form-label">Data</label>
-    <input type="date" name="data" class="form-control" value="{{ today }}" required>
-  </div>
-  <div class="mb-3">
-    <label class="form-label">Quilometragem do veículo na data</label>
-    <input type="number" name="quilometragem" class="form-control" min="0" required>
-  </div>
-  <div class="mb-3">
-    <label class="form-label">Custo (R$)</label>
-    <input type="number" step="0.01" name="custo" class="form-control" min="0" value="0">
-  </div>
-  <div class="mb-3">
-    <label class="form-label">Descrição</label>
-    <textarea name="descricao" class="form-control" rows="2"></textarea>
-  </div>
-  <div class="mb-3">
-    <label class="form-label">Próxima manutenção prevista (data) — opcional</label>
-    <input type="date" name="proxima_data" class="form-control">
-  </div>
-  <div class="mb-3">
-    <label class="form-label">Próxima manutenção prevista (km) — opcional</label>
-    <input type="number" name="proxima_km" class="form-control" min="0">
-  </div>
-  <button type="submit" class="btn btn-primary">Salvar</button>
-  <a href="{{ url_for('listar_manutencoes') }}" class="btn btn-link">Cancelar</a>
 </form>
 {% endblock %}
