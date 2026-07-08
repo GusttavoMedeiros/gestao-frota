@@ -1,0 +1,213 @@
+{% extends "base.html" %}
+{% block title %}Relatórios — Gestão de Frota{% endblock %}
+{% block content %}
+<div class="page-header">
+  <div>
+    <h1 class="page-title">Relatórios</h1>
+    <p class="page-subtitle">Custos e desempenho da frota por período</p>
+  </div>
+  <a href="{{ url_for('exportar_relatorio', inicio=inicio.isoformat(), fim=fim.isoformat()) }}" class="btn btn-primary">
+    <i class="bi bi-download me-1"></i>Exportar para Excel (CSV)
+  </a>
+</div>
+
+<form method="get" class="card filtro-card mb-4">
+  <div class="filtro-linha">
+    <div>
+      <label class="form-label" for="inicio">De</label>
+      <input type="date" id="inicio" name="inicio" class="form-control" value="{{ inicio.isoformat() }}">
+    </div>
+    <div>
+      <label class="form-label" for="fim">Até</label>
+      <input type="date" id="fim" name="fim" class="form-control" value="{{ fim.isoformat() }}">
+    </div>
+    <div class="filtro-acao">
+      <button type="submit" class="btn btn-primary"><i class="bi bi-funnel me-1"></i>Aplicar</button>
+    </div>
+    <div class="filtro-atalhos">
+      {% for nome, ini, f in atalhos %}
+      <a href="{{ url_for('relatorios', inicio=ini.isoformat(), fim=f.isoformat()) }}"
+         class="atalho {{ 'ativo' if ini == inicio and f == fim }}">{{ nome }}</a>
+      {% endfor %}
+    </div>
+  </div>
+</form>
+
+{% if tem_dados %}
+<div class="row g-3 mb-4">
+  <div class="col-sm-6 col-xl-3">
+    <div class="card stat-card">
+      <div class="stat-icon green"><i class="bi bi-cash-stack"></i></div>
+      <div>
+        <div class="stat-label">Custo total</div>
+        <div class="stat-value">{{ totais.custo_total|brl }}</div>
+      </div>
+    </div>
+  </div>
+  <div class="col-sm-6 col-xl-3">
+    <div class="card stat-card">
+      <div class="stat-icon blue"><i class="bi bi-fuel-pump"></i></div>
+      <div>
+        <div class="stat-label">Combustível</div>
+        <div class="stat-value">{{ totais.custo_combustivel|brl }}</div>
+        <div class="stat-sub ms-0">{{ "%.0f"|format(totais.litros) }} litros</div>
+      </div>
+    </div>
+  </div>
+  <div class="col-sm-6 col-xl-3">
+    <div class="card stat-card">
+      <div class="stat-icon amber"><i class="bi bi-wrench-adjustable"></i></div>
+      <div>
+        <div class="stat-label">Manutenções</div>
+        <div class="stat-value">{{ totais.custo_manutencao|brl }}</div>
+        <div class="stat-sub ms-0">{{ totais.qtd_manutencoes }} serviço(s)</div>
+      </div>
+    </div>
+  </div>
+  <div class="col-sm-6 col-xl-3">
+    <div class="card stat-card">
+      <div class="stat-icon indigo"><i class="bi bi-signpost-2"></i></div>
+      <div>
+        <div class="stat-label">Km rodados</div>
+        <div class="stat-value">{{ totais.km_rodados|milhar }}<span class="stat-sub">km</span></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="card mb-4">
+  <div class="card-header-flat">
+    <i class="bi bi-bar-chart-line text-secondary"></i> Evolução mensal de custos (R$)
+    <span class="chart-legend ms-auto">
+      <span class="legend-item"><span class="legend-dot" style="background:#2a78d6"></span>Combustível</span>
+      <span class="legend-item"><span class="legend-dot" style="background:#1baf7a"></span>Manutenção</span>
+    </span>
+  </div>
+  <div class="chart-wrap">
+    {% set plot_x, plot_y, plot_w, plot_h = 52, 14, 660, 210 %}
+    {% set base = plot_y + plot_h %}
+    {% set n = meses|length %}
+    {% set slot_w = plot_w / n %}
+    {% set bar_w = [slot_w * 0.5, 30]|min %}
+    <svg class="chart-svg" viewBox="0 0 720 250" role="img"
+         aria-label="Gráfico de barras: custos mensais de combustível e manutenção">
+      {% for valor in marcacoes %}
+      {% set gy = base - (valor / teto * plot_h) %}
+      <line x1="{{ plot_x }}" y1="{{ gy }}" x2="{{ plot_x + plot_w }}" y2="{{ gy }}" class="grid-line"/>
+      <text x="{{ plot_x - 8 }}" y="{{ gy + 3.5 }}" class="axis-label" text-anchor="end">{{ valor|compacto }}</text>
+      {% endfor %}
+      {% for m in meses %}
+      {% set x = plot_x + slot_w * loop.index0 + (slot_w - bar_w) / 2 %}
+      {% set h_comb = (m.combustivel / teto * plot_h)|round(1) %}
+      {% set h_manut = (m.manutencao / teto * plot_h)|round(1) %}
+      <g class="mes">
+        {% if h_comb > 0 %}
+        <rect x="{{ x }}" y="{{ base - h_comb }}" width="{{ bar_w }}" height="{{ h_comb }}"
+              rx="{{ 0 if h_manut > 0 else 3 }}" fill="#2a78d6"/>
+        {% endif %}
+        {% if h_manut > 0 %}
+        {% set gap = 2 if h_comb > 0 else 0 %}
+        <rect x="{{ x }}" y="{{ base - h_comb - gap - h_manut }}" width="{{ bar_w }}" height="{{ h_manut }}"
+              rx="3" fill="#1baf7a"/>
+        {% endif %}
+        <rect class="hit" x="{{ plot_x + slot_w * loop.index0 }}" y="{{ plot_y }}"
+              width="{{ slot_w }}" height="{{ plot_h }}" fill="transparent"
+              data-label="{{ m.label }}" data-comb="{{ m.combustivel|brl }}"
+              data-manut="{{ m.manutencao|brl }}" data-total="{{ m.total|brl }}">
+          <title>{{ m.label }}: combustível {{ m.combustivel|brl }}, manutenção {{ m.manutencao|brl }}</title>
+        </rect>
+      </g>
+      <text x="{{ plot_x + slot_w * loop.index0 + slot_w / 2 }}" y="{{ base + 18 }}"
+            class="axis-label" text-anchor="middle">{{ m.label }}</text>
+      {% endfor %}
+      <line x1="{{ plot_x }}" y1="{{ base }}" x2="{{ plot_x + plot_w }}" y2="{{ base }}" class="axis-line"/>
+    </svg>
+    <div class="chart-tooltip" hidden></div>
+  </div>
+</div>
+
+<div class="card table-card">
+  <div class="card-header-flat"><i class="bi bi-truck text-secondary"></i> Resumo por veículo</div>
+  <div class="table-responsive">
+    <table class="table">
+      <thead>
+        <tr>
+          <th>Veículo</th><th class="text-end">Km rodados</th><th class="text-end">Litros</th>
+          <th class="text-end">Combustível</th><th class="text-end">Manutenção</th>
+          <th class="text-end">Custo total</th><th class="text-end">Consumo</th><th class="text-end">Custo/km</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for l in linhas %}
+        <tr>
+          <td class="cell-strong">{{ l.veiculo.placa }} <span class="cell-muted fw-normal">· {{ l.veiculo.marca }} {{ l.veiculo.modelo }}</span></td>
+          <td class="text-end">{% if l.km_rodados is not none %}{{ l.km_rodados|milhar }}{% else %}—{% endif %}</td>
+          <td class="text-end">{{ "%.1f"|format(l.litros) }}</td>
+          <td class="text-end">{{ l.custo_combustivel|brl }}</td>
+          <td class="text-end">{{ l.custo_manutencao|brl }}</td>
+          <td class="text-end cell-strong">{{ l.custo_total|brl }}</td>
+          <td class="text-end">{% if l.consumo %}{{ "%.1f"|format(l.consumo) }} km/L{% else %}—{% endif %}</td>
+          <td class="text-end">{% if l.custo_km %}{{ l.custo_km|brl }}{% else %}—{% endif %}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+      <tfoot>
+        <tr class="linha-total">
+          <td>Total</td>
+          <td class="text-end">{{ totais.km_rodados|milhar }}</td>
+          <td class="text-end">{{ "%.1f"|format(totais.litros) }}</td>
+          <td class="text-end">{{ totais.custo_combustivel|brl }}</td>
+          <td class="text-end">{{ totais.custo_manutencao|brl }}</td>
+          <td class="text-end">{{ totais.custo_total|brl }}</td>
+          <td class="text-end">—</td>
+          <td class="text-end">—</td>
+        </tr>
+      </tfoot>
+    </table>
+  </div>
+</div>
+<p class="obs-relatorio">
+  Km rodados e consumo são estimados a partir das quilometragens informadas nos abastecimentos do período
+  (é preciso ter ao menos dois abastecimentos do mesmo veículo para o cálculo).
+</p>
+
+{% else %}
+<div class="card">
+  <div class="empty-state">
+    <i class="bi bi-bar-chart-line"></i>
+    <p>Nenhum registro de custo encontrado entre {{ inicio|data_br }} e {{ fim|data_br }}.<br>
+       Registre manutenções e abastecimentos, ou amplie o período do filtro.</p>
+  </div>
+</div>
+{% endif %}
+{% endblock %}
+
+{% block scripts %}
+<script>
+(function () {
+  const wrap = document.querySelector(".chart-wrap");
+  if (!wrap) return;
+  const tooltip = wrap.querySelector(".chart-tooltip");
+
+  wrap.querySelectorAll(".hit").forEach(function (area) {
+    area.addEventListener("mousemove", function (evento) {
+      tooltip.innerHTML =
+        "<strong>" + area.dataset.label + "</strong>" +
+        "<div><span class='legend-dot' style='background:#2a78d6'></span>Combustível: " + area.dataset.comb + "</div>" +
+        "<div><span class='legend-dot' style='background:#1baf7a'></span>Manutenção: " + area.dataset.manut + "</div>" +
+        "<div class='tooltip-total'>Total: " + area.dataset.total + "</div>";
+      tooltip.hidden = false;
+      const caixa = wrap.getBoundingClientRect();
+      let x = evento.clientX - caixa.left + 14;
+      const y = evento.clientY - caixa.top - 10;
+      if (x + tooltip.offsetWidth > caixa.width - 8) {
+        x = evento.clientX - caixa.left - tooltip.offsetWidth - 14;
+      }
+      tooltip.style.left = x + "px";
+      tooltip.style.top = y + "px";
+    });
+    area.addEventListener("mouseleave", function () { tooltip.hidden = true; });
+  });
+})();
+</script>
+{% endblock %}

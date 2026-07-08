@@ -1,7 +1,10 @@
+import csv
+import io
+import math
 import re
 from datetime import date, datetime, timedelta
 
-from flask import Flask, flash, redirect, render_template, request, url_for
+from flask import Flask, Response, flash, redirect, render_template, request, url_for
 from sqlalchemy import func
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import joinedload
@@ -36,6 +39,17 @@ def formato_milhar(valor):
 @app.template_filter("data_br")
 def formato_data_br(valor):
     return valor.strftime("%d/%m/%Y") if valor else "—"
+
+
+@app.template_filter("compacto")
+def formato_compacto(valor):
+    """Número curto para eixos de gráfico: 1.200 -> '1,2 mil'."""
+    if valor >= 1000:
+        texto = f"{valor / 1000:.1f}".replace(".", ",")
+        if texto.endswith(",0"):
+            texto = texto[:-2]
+        return texto + " mil"
+    return formato_milhar(int(valor))
 
 
 def parse_date(value):
@@ -307,6 +321,176 @@ def excluir_manutencao(manutencao_id):
     db.session.commit()
     flash("Registro de manutenção removido.", "success")
     return redirect(url_for("listar_manutencoes"))
+
+
+# ---------------- Relatórios ----------------
+
+MESES_ABREV = ["Jan", "Fev", "Mar", "Abr", "Mai", "Jun",
+               "Jul", "Ago", "Set", "Out", "Nov", "Dez"]
+
+
+def meses_atras(referencia, quantidade):
+    ano, mes = referencia.year, referencia.month - quantidade
+    while mes <= 0:
+        mes += 12
+        ano -= 1
+    return date(ano, mes, 1)
+
+
+def escala_do_grafico(maximo):
+    """Teto 'redondo' e 5 marcações para o eixo do gráfico."""
+    if maximo <= 0:
+        return 100, [0, 25, 50, 75, 100]
+    bruto = maximo / 4
+    magnitude = 10 ** math.floor(math.log10(bruto))
+    passo = magnitude
+    for multiplo in (1, 2, 2.5, 5, 10):
+        passo = multiplo * magnitude
+        if passo * 4 >= maximo:
+            break
+    return passo * 4, [passo * i for i in range(5)]
+
+
+def dados_relatorio(inicio, fim):
+    """Agrega custos por veículo e por mês dentro do período."""
+    abastecimentos = (
+        Abastecimento.query.options(joinedload(Abastecimento.veiculo))
+        .filter(Abastecimento.data >= inicio, Abastecimento.data <= fim).all()
+    )
+    manutencoes = (
+        Manutencao.query.options(joinedload(Manutencao.veiculo))
+        .filter(Manutencao.data >= inicio, Manutencao.data <= fim).all()
+    )
+
+    por_veiculo = {}
+
+    def entrada(veiculo):
+        return por_veiculo.setdefault(veiculo.id, {
+            "veiculo": veiculo, "litros": 0.0, "custo_combustivel": 0.0,
+            "custo_manutencao": 0.0, "qtd_abastecimentos": 0, "qtd_manutencoes": 0,
+            "abastecimentos": [],
+        })
+
+    for a in abastecimentos:
+        linha = entrada(a.veiculo)
+        linha["litros"] += a.litros
+        linha["custo_combustivel"] += a.valor_total
+        linha["qtd_abastecimentos"] += 1
+        linha["abastecimentos"].append(a)
+    for m in manutencoes:
+        linha = entrada(m.veiculo)
+        linha["custo_manutencao"] += m.custo
+        linha["qtd_manutencoes"] += 1
+
+    linhas = []
+    for linha in por_veiculo.values():
+        registros = sorted(linha.pop("abastecimentos"), key=lambda a: a.quilometragem)
+        km_rodados = consumo = custo_km = None
+        if len(registros) >= 2:
+            km_rodados = registros[-1].quilometragem - registros[0].quilometragem
+            combustivel_usado = sum(a.litros for a in registros[1:])
+            if km_rodados > 0 and combustivel_usado > 0:
+                consumo = km_rodados / combustivel_usado
+        linha["custo_total"] = linha["custo_combustivel"] + linha["custo_manutencao"]
+        if km_rodados and linha["custo_total"]:
+            custo_km = linha["custo_total"] / km_rodados
+        linha.update(km_rodados=km_rodados, consumo=consumo, custo_km=custo_km)
+        linhas.append(linha)
+    linhas.sort(key=lambda item: -item["custo_total"])
+
+    meses = []
+    atual = inicio.replace(day=1)
+    while atual <= fim:
+        meses.append({"ref": atual, "label": f"{MESES_ABREV[atual.month - 1]}/{atual.year % 100:02d}",
+                      "combustivel": 0.0, "manutencao": 0.0})
+        atual = (atual + timedelta(days=32)).replace(day=1)
+    indice = {(m["ref"].year, m["ref"].month): m for m in meses}
+    for a in abastecimentos:
+        mes = indice.get((a.data.year, a.data.month))
+        if mes:
+            mes["combustivel"] += a.valor_total
+    for m in manutencoes:
+        mes = indice.get((m.data.year, m.data.month))
+        if mes:
+            mes["manutencao"] += m.custo
+    for mes in meses:
+        mes["total"] = mes["combustivel"] + mes["manutencao"]
+
+    totais = {
+        "custo_total": sum(l["custo_total"] for l in linhas),
+        "custo_combustivel": sum(l["custo_combustivel"] for l in linhas),
+        "custo_manutencao": sum(l["custo_manutencao"] for l in linhas),
+        "litros": sum(l["litros"] for l in linhas),
+        "km_rodados": sum(l["km_rodados"] or 0 for l in linhas),
+        "qtd_manutencoes": sum(l["qtd_manutencoes"] for l in linhas),
+    }
+    return linhas, meses, totais
+
+
+def periodo_do_filtro():
+    hoje = date.today()
+    fim = parse_date(request.args.get("fim")) or hoje
+    inicio = parse_date(request.args.get("inicio")) or meses_atras(hoje, 5)
+    if inicio > fim:
+        inicio, fim = fim, inicio
+    return inicio, fim
+
+
+@app.route("/relatorios")
+def relatorios():
+    inicio, fim = periodo_do_filtro()
+    linhas, meses, totais = dados_relatorio(inicio, fim)
+    maximo = max((m["total"] for m in meses), default=0)
+    teto, marcacoes = escala_do_grafico(maximo)
+    hoje = date.today()
+    atalhos = [
+        ("Este mês", hoje.replace(day=1), hoje),
+        ("Últimos 6 meses", meses_atras(hoje, 5), hoje),
+        ("Este ano", hoje.replace(month=1, day=1), hoje),
+    ]
+    return render_template(
+        "relatorios.html", inicio=inicio, fim=fim, linhas=linhas, meses=meses,
+        totais=totais, teto=teto, marcacoes=marcacoes, atalhos=atalhos,
+        tem_dados=bool(linhas),
+    )
+
+
+@app.route("/relatorios/exportar")
+def exportar_relatorio():
+    inicio, fim = periodo_do_filtro()
+    linhas, meses, totais = dados_relatorio(inicio, fim)
+
+    def num(valor, casas=2):
+        return f"{valor:.{casas}f}".replace(".", ",") if valor is not None else ""
+
+    buffer = io.StringIO()
+    escritor = csv.writer(buffer, delimiter=";", lineterminator="\r\n")
+    escritor.writerow([f"Relatório da frota — {inicio.strftime('%d/%m/%Y')} a {fim.strftime('%d/%m/%Y')}"])
+    escritor.writerow([])
+    escritor.writerow(["Resumo por veículo"])
+    escritor.writerow(["Placa", "Veículo", "Km rodados", "Litros", "Custo combustível (R$)",
+                       "Custo manutenção (R$)", "Custo total (R$)", "Consumo (km/L)", "Custo por km (R$)"])
+    for l in linhas:
+        v = l["veiculo"]
+        escritor.writerow([v.placa, f"{v.marca} {v.modelo}",
+                           l["km_rodados"] if l["km_rodados"] is not None else "",
+                           num(l["litros"], 1), num(l["custo_combustivel"]),
+                           num(l["custo_manutencao"]), num(l["custo_total"]),
+                           num(l["consumo"], 1) if l["consumo"] else "",
+                           num(l["custo_km"]) if l["custo_km"] else ""])
+    escritor.writerow(["TOTAL", "", totais["km_rodados"], num(totais["litros"], 1),
+                       num(totais["custo_combustivel"]), num(totais["custo_manutencao"]),
+                       num(totais["custo_total"]), "", ""])
+    escritor.writerow([])
+    escritor.writerow(["Evolução mensal"])
+    escritor.writerow(["Mês", "Combustível (R$)", "Manutenção (R$)", "Total (R$)"])
+    for m in meses:
+        escritor.writerow([m["label"], num(m["combustivel"]), num(m["manutencao"]), num(m["total"])])
+
+    conteudo = "﻿" + buffer.getvalue()  # BOM para o Excel abrir acentos corretamente
+    nome = f"relatorio_frota_{inicio.isoformat()}_a_{fim.isoformat()}.csv"
+    return Response(conteudo, mimetype="text/csv",
+                    headers={"Content-Disposition": f"attachment; filename={nome}"})
 
 
 # ---------------- Abastecimentos ----------------
