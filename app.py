@@ -1,3 +1,4 @@
+import re
 from datetime import date, datetime, timedelta
 
 from flask import Flask, flash, redirect, render_template, request, url_for
@@ -39,6 +40,36 @@ def formato_data_br(valor):
 
 def parse_date(value):
     return datetime.strptime(value, "%Y-%m-%d").date() if value else None
+
+
+def parse_num(value):
+    """Aceita números em formato brasileiro ('600.000', '1.234,56') ou padrão ('600000', '1234.56')."""
+    texto = (value or "").strip().replace(" ", "")
+    if not texto:
+        return None
+    if "," in texto:
+        # vírgula é decimal; pontos são separadores de milhar
+        texto = texto.replace(".", "").replace(",", ".")
+    elif re.fullmatch(r"\d{1,3}(\.\d{3})+", texto):
+        # apenas pontos em grupos de 3 dígitos: separador de milhar
+        texto = texto.replace(".", "")
+    return float(texto)
+
+
+def parse_int(value, default=None):
+    numero = parse_num(value)
+    return int(round(numero)) if numero is not None else default
+
+
+def parse_float(value, default=None):
+    numero = parse_num(value)
+    return numero if numero is not None else default
+
+
+@app.errorhandler(ValueError)
+def erro_de_valor(e):
+    flash("Não foi possível entender um dos números informados. Verifique os campos e tente novamente.", "danger")
+    return redirect(request.referrer or url_for("index"))
 
 
 # ---------------- Painel ----------------
@@ -119,8 +150,8 @@ def preencher_veiculo(veiculo):
     veiculo.placa = request.form["placa"].strip().upper()
     veiculo.marca = request.form["marca"].strip()
     veiculo.modelo = request.form["modelo"].strip()
-    veiculo.ano = int(request.form["ano"])
-    veiculo.quilometragem = int(request.form["quilometragem"])
+    veiculo.ano = parse_int(request.form["ano"])
+    veiculo.quilometragem = parse_int(request.form["quilometragem"])
     veiculo.status = request.form["status"]
 
 
@@ -235,11 +266,11 @@ def preencher_manutencao(manutencao):
     manutencao.veiculo_id = int(request.form["veiculo_id"])
     manutencao.tipo = request.form["tipo"].strip()
     manutencao.data = parse_date(request.form["data"])
-    manutencao.quilometragem = int(request.form["quilometragem"])
-    manutencao.custo = float(request.form["custo"] or 0)
+    manutencao.quilometragem = parse_int(request.form["quilometragem"])
+    manutencao.custo = parse_float(request.form.get("custo"), 0)
     manutencao.descricao = request.form.get("descricao", "").strip()
     manutencao.proxima_data = parse_date(request.form.get("proxima_data"))
-    manutencao.proxima_km = int(request.form["proxima_km"]) if request.form.get("proxima_km") else None
+    manutencao.proxima_km = parse_int(request.form.get("proxima_km"))
 
 
 @app.route("/manutencoes/nova", methods=["GET", "POST"])
@@ -310,9 +341,9 @@ def preencher_abastecimento(abastecimento):
     abastecimento.motorista_id = int(motorista_id) if motorista_id else None
     abastecimento.data = parse_date(request.form["data"])
     abastecimento.tipo_combustivel = request.form["tipo_combustivel"]
-    abastecimento.litros = float(request.form["litros"])
-    abastecimento.valor_total = float(request.form["valor_total"])
-    abastecimento.quilometragem = int(request.form["quilometragem"])
+    abastecimento.litros = parse_float(request.form["litros"])
+    abastecimento.valor_total = parse_float(request.form["valor_total"])
+    abastecimento.quilometragem = parse_int(request.form["quilometragem"])
 
 
 @app.route("/abastecimentos/novo", methods=["GET", "POST"])
