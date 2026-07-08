@@ -1,0 +1,34 @@
+{% extends "base.html" %}
+{% block title %}{{ "Editar" if motorista else "Novo" }} Motorista{% endblock %}
+{% block content %}
+<h1 class="mb-4">{{ "Editar" if motorista else "Novo" }} Motorista</h1>
+<form method="post" class="bg-white p-4 shadow-sm rounded" style="max-width: 500px;">
+  <div class="mb-3">
+    <label class="form-label">Nome</label>
+    <input type="text" name="nome" class="form-control" value="{{ motorista.nome if motorista else '' }}" required>
+  </div>
+  <div class="mb-3">
+    <label class="form-label">CNH (número)</label>
+    <input type="text" name="cnh" class="form-control" value="{{ motorista.cnh if motorista else '' }}" required>
+  </div>
+  <div class="mb-3">
+    <label class="form-label">Categoria da CNH</label>
+    <input type="text" name="categoria_cnh" class="form-control" value="{{ motorista.categoria_cnh if motorista else '' }}" placeholder="Ex: B, C, D, E" required maxlength="5">
+  </div>
+  <div class="mb-3">
+    <label class="form-label">Telefone</label>
+    <input type="text" name="telefone" class="form-control" value="{{ motorista.telefone if motorista else '' }}">
+  </div>
+  <div class="mb-3">
+    <label class="form-label">Veículo vinculado (opcional)</label>
+    <select name="veiculo_id" class="form-select">
+      <option value="">Nenhum</option>
+      {% for v in veiculos %}
+      <option value="{{ v.id }}" {% if motorista and motorista.veiculo_id == v.id %}selected{% endif %}>{{ v.placa }} - {{ v.marca }} {{ v.modelo }}</option>
+      {% endfor %}
+    </select>
+  </div>
+  <button type="submit" class="btn btn-primary">Salvar</button>
+  <a href="{{ url_for('listar_motoristas') }}" class="btn btn-link">Cancelar</a>
+</form>
+{% endblock %}

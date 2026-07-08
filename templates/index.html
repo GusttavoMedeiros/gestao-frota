@@ -1,0 +1,39 @@
+{% extends "base.html" %}
+{% block title %}Início - Gestão de Frota{% endblock %}
+{% block content %}
+<h1 class="mb-4">Painel Geral</h1>
+<div class="row g-3">
+  <div class="col-md-3">
+    <div class="card text-center shadow-sm">
+      <div class="card-body">
+        <h6 class="text-muted">Veículos cadastrados</h6>
+        <p class="display-6">{{ stats.total_veiculos }}</p>
+      </div>
+    </div>
+  </div>
+  <div class="col-md-3">
+    <div class="card text-center shadow-sm">
+      <div class="card-body">
+        <h6 class="text-muted">Veículos ativos</h6>
+        <p class="display-6 text-success">{{ stats.veiculos_ativos }}</p>
+      </div>
+    </div>
+  </div>
+  <div class="col-md-3">
+    <div class="card text-center shadow-sm">
+      <div class="card-body">
+        <h6 class="text-muted">Em manutenção</h6>
+        <p class="display-6 text-warning">{{ stats.veiculos_manutencao }}</p>
+      </div>
+    </div>
+  </div>
+  <div class="col-md-3">
+    <div class="card text-center shadow-sm">
+      <div class="card-body">
+        <h6 class="text-muted">Motoristas cadastrados</h6>
+        <p class="display-6">{{ stats.total_motoristas }}</p>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

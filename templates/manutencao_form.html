@@ -1,0 +1,46 @@
+{% extends "base.html" %}
+{% block title %}Nova Manutenção{% endblock %}
+{% block content %}
+<h1 class="mb-4">Nova Manutenção</h1>
+<form method="post" class="bg-white p-4 shadow-sm rounded" style="max-width: 500px;">
+  <div class="mb-3">
+    <label class="form-label">Veículo</label>
+    <select name="veiculo_id" class="form-select" required>
+      <option value="" disabled selected>Selecione...</option>
+      {% for v in veiculos %}
+      <option value="{{ v.id }}">{{ v.placa }} - {{ v.marca }} {{ v.modelo }}</option>
+      {% endfor %}
+    </select>
+  </div>
+  <div class="mb-3">
+    <label class="form-label">Tipo de manutenção</label>
+    <input type="text" name="tipo" class="form-control" placeholder="Ex: Troca de óleo, Revisão, Pneus" required>
+  </div>
+  <div class="mb-3">
+    <label class="form-label">Data</label>
+    <input type="date" name="data" class="form-control" value="{{ today }}" required>
+  </div>
+  <div class="mb-3">
+    <label class="form-label">Quilometragem do veículo na data</label>
+    <input type="number" name="quilometragem" class="form-control" min="0" required>
+  </div>
+  <div class="mb-3">
+    <label class="form-label">Custo (R$)</label>
+    <input type="number" step="0.01" name="custo" class="form-control" min="0" value="0">
+  </div>
+  <div class="mb-3">
+    <label class="form-label">Descrição</label>
+    <textarea name="descricao" class="form-control" rows="2"></textarea>
+  </div>
+  <div class="mb-3">
+    <label class="form-label">Próxima manutenção prevista (data) — opcional</label>
+    <input type="date" name="proxima_data" class="form-control">
+  </div>
+  <div class="mb-3">
+    <label class="form-label">Próxima manutenção prevista (km) — opcional</label>
+    <input type="number" name="proxima_km" class="form-control" min="0">
+  </div>
+  <button type="submit" class="btn btn-primary">Salvar</button>
+  <a href="{{ url_for('listar_manutencoes') }}" class="btn btn-link">Cancelar</a>
+</form>
+{% endblock %}

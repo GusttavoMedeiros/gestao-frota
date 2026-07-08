@@ -1,0 +1,39 @@
+{% extends "base.html" %}
+{% block title %}Veículos{% endblock %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-3">
+  <h1>Veículos</h1>
+  <a href="{{ url_for('novo_veiculo') }}" class="btn btn-primary">+ Novo Veículo</a>
+</div>
+<table class="table table-striped bg-white shadow-sm">
+  <thead>
+    <tr>
+      <th>Placa</th><th>Marca</th><th>Modelo</th><th>Ano</th><th>KM</th><th>Status</th><th></th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for v in veiculos %}
+    <tr>
+      <td>{{ v.placa }}</td>
+      <td>{{ v.marca }}</td>
+      <td>{{ v.modelo }}</td>
+      <td>{{ v.ano }}</td>
+      <td>{{ "{:,}".format(v.quilometragem).replace(",", ".") }}</td>
+      <td>
+        {% if v.status == 'ativo' %}<span class="badge bg-success">Ativo</span>
+        {% elif v.status == 'manutencao' %}<span class="badge bg-warning text-dark">Manutenção</span>
+        {% else %}<span class="badge bg-secondary">Inativo</span>{% endif %}
+      </td>
+      <td class="text-end">
+        <a href="{{ url_for('editar_veiculo', veiculo_id=v.id) }}" class="btn btn-sm btn-outline-secondary">Editar</a>
+        <form action="{{ url_for('excluir_veiculo', veiculo_id=v.id) }}" method="post" class="d-inline" onsubmit="return confirm('Remover este veículo?');">
+          <button type="submit" class="btn btn-sm btn-outline-danger">Excluir</button>
+        </form>
+      </td>
+    </tr>
+    {% else %}
+    <tr><td colspan="7" class="text-center text-muted">Nenhum veículo cadastrado ainda.</td></tr>
+    {% endfor %}
+  </tbody>
+</table>
+{% endblock %}

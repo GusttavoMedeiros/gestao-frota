@@ -1,0 +1,33 @@
+{% extends "base.html" %}
+{% block title %}Abastecimentos{% endblock %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-3">
+  <h1>Abastecimentos</h1>
+  <a href="{{ url_for('novo_abastecimento') }}" class="btn btn-primary">+ Novo Abastecimento</a>
+</div>
+<table class="table table-striped bg-white shadow-sm">
+  <thead>
+    <tr><th>Veículo</th><th>Motorista</th><th>Data</th><th>Combustível</th><th>Litros</th><th>Valor</th><th>KM</th><th></th></tr>
+  </thead>
+  <tbody>
+    {% for a in abastecimentos %}
+    <tr>
+      <td>{{ a.veiculo.placa }}</td>
+      <td>{{ a.motorista.nome if a.motorista else "-" }}</td>
+      <td>{{ a.data.strftime('%d/%m/%Y') }}</td>
+      <td>{{ a.tipo_combustivel|capitalize }}</td>
+      <td>{{ "%.1f"|format(a.litros) }} L</td>
+      <td>R$ {{ "%.2f"|format(a.valor_total) }}</td>
+      <td>{{ "{:,}".format(a.quilometragem).replace(",", ".") }}</td>
+      <td class="text-end">
+        <form action="{{ url_for('excluir_abastecimento', abastecimento_id=a.id) }}" method="post" class="d-inline" onsubmit="return confirm('Remover este registro?');">
+          <button type="submit" class="btn btn-sm btn-outline-danger">Excluir</button>
+        </form>
+      </td>
+    </tr>
+    {% else %}
+    <tr><td colspan="8" class="text-center text-muted">Nenhum abastecimento registrado ainda.</td></tr>
+    {% endfor %}
+  </tbody>
+</table>
+{% endblock %}

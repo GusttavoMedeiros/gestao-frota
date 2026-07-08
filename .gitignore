@@ -1,0 +1,8 @@
+__pycache__/
+*.pyc
+venv/
+.venv/
+frota.db
+.env
+instance/
+.claude/settings.local.json
