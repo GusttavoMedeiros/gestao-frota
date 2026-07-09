@@ -1,6 +1,23 @@
 from flask_sqlalchemy import SQLAlchemy
+from werkzeug.security import check_password_hash, generate_password_hash
 
 db = SQLAlchemy()
+
+
+class Usuario(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    usuario = db.Column(db.String(50), unique=True, nullable=False)
+    nome = db.Column(db.String(100))
+    senha_hash = db.Column(db.String(255), nullable=False)
+
+    def definir_senha(self, senha):
+        self.senha_hash = generate_password_hash(senha)
+
+    def conferir_senha(self, senha):
+        return check_password_hash(self.senha_hash, senha)
+
+    def __repr__(self):
+        return f"<Usuario {self.usuario}>"
 
 
 class Veiculo(db.Model):

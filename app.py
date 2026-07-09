@@ -12,13 +12,27 @@ from sqlalchemy import func
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import joinedload
 
-from models import Abastecimento, Manutencao, Motorista, Veiculo, db
+from models import Abastecimento, Manutencao, Motorista, Usuario, Veiculo, db
 
 app = Flask(__name__)
-app.config["SQLALCHEMY_DATABASE_URI"] = "sqlite:///frota.db"
+
+# Banco: usa DATABASE_URL se definida; senão, um arquivo SQLite na pasta do
+# projeto (caminho absoluto, para não depender de onde o app foi iniciado).
+BASE_DIR = os.path.abspath(os.path.dirname(__file__))
+app.config["SQLALCHEMY_DATABASE_URI"] = (
+    os.environ.get("DATABASE_URL") or "sqlite:///" + os.path.join(BASE_DIR, "frota.db")
+)
+
 # Em produção, defina a variável de ambiente SECRET_KEY com um valor fixo.
 # Sem ela, uma chave aleatória é gerada a cada execução (seguro para uso local).
 app.config["SECRET_KEY"] = os.environ.get("SECRET_KEY") or secrets.token_hex(32)
+
+# Cookies de sessão. Em produção (FLASK_DEBUG=0) o cookie só trafega em HTTPS.
+EM_PRODUCAO = os.environ.get("FLASK_DEBUG", "1") == "0"
+app.config["SESSION_COOKIE_HTTPONLY"] = True
+app.config["SESSION_COOKIE_SAMESITE"] = "Lax"
+app.config["SESSION_COOKIE_SECURE"] = EM_PRODUCAO
+
 db.init_app(app)
 
 with app.app_context():
@@ -44,6 +58,94 @@ def proteger_csrf():
         if not token or token != request.form.get("_csrf"):
             flash("Sua sessão expirou. Recarregue a página e tente novamente.", "danger")
             return redirect(request.referrer or url_for("index"))
+
+
+# ---------------- Autenticação ----------------
+
+# Endpoints acessíveis sem login (a própria tela de login, o primeiro acesso,
+# arquivos estáticos e o service worker do PWA).
+ENDPOINTS_PUBLICOS = {"login", "logout", "configurar", "service_worker", "static"}
+
+
+@app.before_request
+def exigir_login():
+    if request.endpoint in ENDPOINTS_PUBLICOS:
+        return
+    if Usuario.query.count() == 0:
+        return redirect(url_for("configurar"))
+    if "user_id" not in session:
+        return redirect(url_for("login"))
+
+
+@app.context_processor
+def injeta_usuario():
+    uid = session.get("user_id")
+    return {"usuario_atual": db.session.get(Usuario, uid) if uid else None}
+
+
+@app.route("/configurar", methods=["GET", "POST"])
+def configurar():
+    # Só funciona enquanto não houver nenhum usuário (primeiro acesso).
+    if Usuario.query.count() > 0:
+        return redirect(url_for("login"))
+    if request.method == "POST":
+        try:
+            usuario = exigir_texto("usuario", "Usuário", 50).lower()
+            senha = request.form.get("senha", "")
+            confirmar = request.form.get("confirmar", "")
+            if len(senha) < 6:
+                raise ErroFormulario("A senha deve ter pelo menos 6 caracteres.")
+            if senha != confirmar:
+                raise ErroFormulario("As senhas não conferem.")
+            novo = Usuario(usuario=usuario, nome=request.form.get("nome", "").strip())
+            novo.definir_senha(senha)
+            db.session.add(novo)
+            db.session.commit()
+        except ErroFormulario as erro:
+            db.session.rollback()
+            flash(str(erro), "danger")
+            return render_template("configurar.html")
+        session.clear()
+        session["user_id"] = novo.id
+        flash("Conta criada! Bem-vindo ao sistema.", "success")
+        return redirect(url_for("index"))
+    return render_template("configurar.html")
+
+
+@app.route("/login", methods=["GET", "POST"])
+def login():
+    if Usuario.query.count() == 0:
+        return redirect(url_for("configurar"))
+    if request.method == "POST":
+        usuario = request.form.get("usuario", "").strip().lower()
+        senha = request.form.get("senha", "")
+        conta = Usuario.query.filter_by(usuario=usuario).first()
+        if conta and conta.conferir_senha(senha):
+            csrf = session.get("_csrf")
+            session.clear()
+            if csrf:
+                session["_csrf"] = csrf
+            session["user_id"] = conta.id
+            return redirect(url_for("index"))
+        flash("Usuário ou senha incorretos.", "danger")
+        return render_template("login.html", usuario=usuario)
+    return render_template("login.html")
+
+
+@app.route("/logout", methods=["POST"])
+def logout():
+    session.clear()
+    flash("Você saiu do sistema.", "success")
+    return redirect(url_for("login"))
+
+
+@app.route("/sw.js")
+def service_worker():
+    resposta = app.send_static_file("sw.js")
+    resposta.headers["Content-Type"] = "application/javascript"
+    resposta.headers["Service-Worker-Allowed"] = "/"
+    resposta.headers["Cache-Control"] = "no-cache"
+    return resposta
 
 
 # ---------------- Filtros de formatação ----------------
