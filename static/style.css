@@ -5,11 +5,11 @@
 
 :root {
   /* Superfícies e neutros */
-  --bg:            #f6f7f9;
+  --bg:            #e9ecf1;  /* fundo cinza suave (menos ofuscante que branco) */
   --surface:       #ffffff;
-  --surface-2:     #f8fafc;
-  --border:        #e6e9ef;
-  --border-strong: #d6dbe4;
+  --surface-2:     #f4f6f9;
+  --border:        #dde1e9;
+  --border-strong: #ccd2dd;
 
   /* Texto */
   --text:      #1a2432;
