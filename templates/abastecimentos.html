@@ -29,7 +29,7 @@
           <td class="text-end">{% if a.consumo %}{{ "%.1f"|format(a.consumo) }} km/L{% else %}—{% endif %}</td>
           <td class="text-end text-nowrap">
             <a href="{{ url_for('editar_abastecimento', abastecimento_id=a.id) }}" class="btn btn-sm btn-ghost" title="Editar"><i class="bi bi-pencil"></i></a>
-            <form action="{{ url_for('excluir_abastecimento', abastecimento_id=a.id) }}" method="post" class="d-inline" onsubmit="return confirm('Remover este registro de abastecimento?');">
+            <form action="{{ url_for('excluir_abastecimento', abastecimento_id=a.id) }}" method="post" class="d-inline" data-confirm="Remover este registro de abastecimento?">
               <button type="submit" class="btn btn-sm btn-ghost danger" title="Excluir"><i class="bi bi-trash"></i></button>
             </form>
           </td>

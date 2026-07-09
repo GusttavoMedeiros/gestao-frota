@@ -56,9 +56,9 @@
       <input type="number" step="0.01" name="valor_total" class="form-control" value="{{ abastecimento.valor_total if abastecimento else '' }}" min="0" required>
     </div>
   </div>
-  <div class="mt-4 d-flex gap-2">
+  <div class="form-actions">
     <button type="submit" class="btn btn-primary"><i class="bi bi-check-lg me-1"></i>Salvar</button>
-    <a href="{{ url_for('listar_abastecimentos') }}" class="btn btn-ghost">Cancelar</a>
+    <a href="{{ url_for('listar_abastecimentos') }}" class="btn btn-outline-secondary">Cancelar</a>
   </div>
 </form>
 {% endblock %}

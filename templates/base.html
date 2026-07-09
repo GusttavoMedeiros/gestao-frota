@@ -76,7 +76,57 @@
 
 </div>
 
+<!-- Modal de confirmação reutilizável -->
+<div class="modal fade" id="confirmModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-body d-flex gap-3">
+        <div class="modal-icon"><i class="bi bi-exclamation-triangle-fill"></i></div>
+        <div>
+          <h5 class="modal-title mb-1" id="confirmTitle">Confirmar exclusão</h5>
+          <p class="mb-0" id="confirmText">Tem certeza que deseja continuar?</p>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button>
+        <button type="button" class="btn btn-primary" id="confirmOk">
+          <i class="bi bi-trash3 me-1"></i>Excluir
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js" defer></script>
+<script>
+// Intercepta formulários com data-confirm e mostra o modal estilizado
+document.addEventListener('DOMContentLoaded', function () {
+  var modalEl = document.getElementById('confirmModal');
+  var modal = new bootstrap.Modal(modalEl);
+  var okBtn = document.getElementById('confirmOk');
+  var textEl = document.getElementById('confirmText');
+  var pending = null;
+
+  document.querySelectorAll('form[data-confirm]').forEach(function (form) {
+    form.addEventListener('submit', function (e) {
+      if (form.dataset.confirmed === '1') return; // já confirmado, deixa enviar
+      e.preventDefault();
+      pending = form;
+      textEl.textContent = form.getAttribute('data-confirm');
+      modal.show();
+    });
+  });
+
+  okBtn.addEventListener('click', function () {
+    if (!pending) return;
+    var btn = okBtn;
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>Excluindo...';
+    pending.dataset.confirmed = '1';
+    pending.submit();
+  });
+});
+</script>
 {% block scripts %}{% endblock %}
 </body>
 </html>

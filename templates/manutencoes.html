@@ -31,7 +31,7 @@
           </td>
           <td class="text-end text-nowrap">
             <a href="{{ url_for('editar_manutencao', manutencao_id=m.id) }}" class="btn btn-sm btn-ghost" title="Editar"><i class="bi bi-pencil"></i></a>
-            <form action="{{ url_for('excluir_manutencao', manutencao_id=m.id) }}" method="post" class="d-inline" onsubmit="return confirm('Remover este registro de manutenção?');">
+            <form action="{{ url_for('excluir_manutencao', manutencao_id=m.id) }}" method="post" class="d-inline" data-confirm="Remover este registro de manutenção?">
               <button type="submit" class="btn btn-sm btn-ghost danger" title="Excluir"><i class="bi bi-trash"></i></button>
             </form>
           </td>
