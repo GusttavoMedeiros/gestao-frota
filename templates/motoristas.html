@@ -27,6 +27,7 @@
           <td class="text-end text-nowrap">
             <a href="{{ url_for('editar_motorista', motorista_id=m.id) }}" class="btn btn-sm btn-ghost" title="Editar"><i class="bi bi-pencil"></i></a>
             <form action="{{ url_for('excluir_motorista', motorista_id=m.id) }}" method="post" class="d-inline" data-confirm="Remover o motorista {{ m.nome }}?">
+              <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
               <button type="submit" class="btn btn-sm btn-ghost danger" title="Excluir"><i class="bi bi-trash"></i></button>
             </form>
           </td>

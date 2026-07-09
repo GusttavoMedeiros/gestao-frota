@@ -43,6 +43,10 @@
   /* Fundo escuro só para tooltips */
   --dark: #1e293b;
 
+  /* Cores do gráfico (seguem a paleta do sistema) */
+  --chart-comb:  #2563eb;
+  --chart-manut: #059669;
+
   /* Raios firmes */
   --radius:    10px;
   --radius-sm: 8px;
@@ -345,6 +349,17 @@ h1, h2, h3, h4, h5, .page-title, .sidebar-brand strong {
   color: var(--text);
 }
 
+/* Perigo — ações destrutivas (excluir) */
+.btn-danger {
+  background: #dc2626;
+  border: 1px solid #dc2626;
+  color: #fff;
+  padding: .5rem 1.1rem;
+}
+.btn-danger:hover  { background: #b91c1c; border-color: #b91c1c; color: #fff; }
+.btn-danger:active { background: #991b1b; border-color: #991b1b; }
+.btn-danger:focus-visible { box-shadow: 0 0 0 4px rgba(220, 38, 38, .25); }
+
 /* Ghost — SOMENTE botões de ícone nas tabelas (quadrados, alinhados) */
 .btn-ghost {
   display: inline-flex;
@@ -462,6 +477,10 @@ h1, h2, h3, h4, h5, .page-title, .sidebar-brand strong {
 .chart-legend { display: flex; gap: 1rem; font-size: .8rem; font-weight: 500; color: var(--muted); font-family: var(--font-body); }
 .legend-item { display: inline-flex; align-items: center; gap: .4rem; }
 .legend-dot { width: 10px; height: 10px; border-radius: 3px; display: inline-block; flex-shrink: 0; }
+.legend-dot.dot-comb  { background: var(--chart-comb); }
+.legend-dot.dot-manut { background: var(--chart-manut); }
+.chart-svg .barra-comb  { fill: var(--chart-comb); }
+.chart-svg .barra-manut { fill: var(--chart-manut); }
 .chart-tooltip {
   position: absolute;
   pointer-events: none;

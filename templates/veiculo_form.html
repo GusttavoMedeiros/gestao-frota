@@ -1,6 +1,7 @@
 {% extends "base.html" %}
 {% block title %}{{ "Editar" if veiculo else "Novo" }} veículo — Gestão de Frota{% endblock %}
 {% block content %}
+{% set f = request.form %}
 <nav class="breadcrumb">
   <a href="{{ url_for('listar_veiculos') }}">Veículos</a>
   <span class="mx-2 text-muted">/</span>
@@ -12,33 +13,35 @@
 </div>
 
 <form method="post" class="card form-card">
+  <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
   <div class="row g-3">
     <div class="col-md-4">
       <label class="form-label">Placa <span class="req">*</span></label>
-      <input type="text" name="placa" class="form-control" value="{{ veiculo.placa if veiculo else '' }}" required maxlength="10" placeholder="ABC1D23">
+      <input type="text" name="placa" class="form-control" value="{{ f.get('placa', veiculo.placa if veiculo else '') }}" required maxlength="10" placeholder="ABC1D23">
     </div>
     <div class="col-md-4">
       <label class="form-label">Marca <span class="req">*</span></label>
-      <input type="text" name="marca" class="form-control" value="{{ veiculo.marca if veiculo else '' }}" required placeholder="Fiat">
+      <input type="text" name="marca" class="form-control" value="{{ f.get('marca', veiculo.marca if veiculo else '') }}" required maxlength="50" placeholder="Fiat">
     </div>
     <div class="col-md-4">
       <label class="form-label">Modelo <span class="req">*</span></label>
-      <input type="text" name="modelo" class="form-control" value="{{ veiculo.modelo if veiculo else '' }}" required placeholder="Strada">
+      <input type="text" name="modelo" class="form-control" value="{{ f.get('modelo', veiculo.modelo if veiculo else '') }}" required maxlength="50" placeholder="Strada">
     </div>
     <div class="col-md-4">
       <label class="form-label">Ano <span class="req">*</span></label>
-      <input type="number" name="ano" class="form-control" value="{{ veiculo.ano if veiculo else '' }}" required min="1950" max="2100">
+      <input type="number" name="ano" class="form-control" value="{{ f.get('ano', veiculo.ano if veiculo else '') }}" required min="1950" max="2100">
     </div>
     <div class="col-md-4">
       <label class="form-label">Quilometragem atual <span class="req">*</span></label>
-      <input type="number" name="quilometragem" class="form-control" value="{{ veiculo.quilometragem if veiculo else 0 }}" required min="0">
+      <input type="text" inputmode="numeric" name="quilometragem" class="form-control" value="{{ f.get('quilometragem', veiculo.quilometragem if veiculo else 0) }}" required placeholder="Ex.: 85.000">
     </div>
     <div class="col-md-4">
       <label class="form-label">Status</label>
+      {% set status_sel = f.get('status', veiculo.status if veiculo else 'ativo') %}
       <select name="status" class="form-select">
-        <option value="ativo" {% if veiculo and veiculo.status == 'ativo' %}selected{% endif %}>Ativo</option>
-        <option value="manutencao" {% if veiculo and veiculo.status == 'manutencao' %}selected{% endif %}>Manutenção</option>
-        <option value="inativo" {% if veiculo and veiculo.status == 'inativo' %}selected{% endif %}>Inativo</option>
+        <option value="ativo" {% if status_sel == 'ativo' %}selected{% endif %}>Ativo</option>
+        <option value="manutencao" {% if status_sel == 'manutencao' %}selected{% endif %}>Manutenção</option>
+        <option value="inativo" {% if status_sel == 'inativo' %}selected{% endif %}>Inativo</option>
       </select>
     </div>
   </div>

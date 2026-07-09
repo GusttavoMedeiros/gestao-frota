@@ -6,9 +6,11 @@
     <h1 class="page-title">Relatórios</h1>
     <p class="page-subtitle">Custos e desempenho da frota por período</p>
   </div>
+  {% if tem_dados %}
   <a href="{{ url_for('exportar_relatorio', inicio=inicio.isoformat(), fim=fim.isoformat()) }}" class="btn btn-primary">
     <i class="bi bi-download me-1"></i>Exportar para Excel (CSV)
   </a>
+  {% endif %}
 </div>
 
 <form method="get" class="card filtro-card mb-4">
@@ -79,8 +81,8 @@
   <div class="card-header-flat">
     <i class="bi bi-bar-chart-line text-secondary"></i> Evolução mensal de custos (R$)
     <span class="chart-legend ms-auto">
-      <span class="legend-item"><span class="legend-dot" style="background:#2a78d6"></span>Combustível</span>
-      <span class="legend-item"><span class="legend-dot" style="background:#1baf7a"></span>Manutenção</span>
+      <span class="legend-item"><span class="legend-dot dot-comb"></span>Combustível</span>
+      <span class="legend-item"><span class="legend-dot dot-manut"></span>Manutenção</span>
     </span>
   </div>
   <div class="chart-wrap">
@@ -102,13 +104,13 @@
       {% set h_manut = (m.manutencao / teto * plot_h)|round(1) %}
       <g class="mes">
         {% if h_comb > 0 %}
-        <rect x="{{ x }}" y="{{ base - h_comb }}" width="{{ bar_w }}" height="{{ h_comb }}"
-              rx="{{ 0 if h_manut > 0 else 3 }}" fill="#2a78d6"/>
+        <rect class="barra-comb" x="{{ x }}" y="{{ base - h_comb }}" width="{{ bar_w }}" height="{{ h_comb }}"
+              rx="{{ 0 if h_manut > 0 else 3 }}"/>
         {% endif %}
         {% if h_manut > 0 %}
         {% set gap = 2 if h_comb > 0 else 0 %}
-        <rect x="{{ x }}" y="{{ base - h_comb - gap - h_manut }}" width="{{ bar_w }}" height="{{ h_manut }}"
-              rx="3" fill="#1baf7a"/>
+        <rect class="barra-manut" x="{{ x }}" y="{{ base - h_comb - gap - h_manut }}" width="{{ bar_w }}" height="{{ h_manut }}"
+              rx="3"/>
         {% endif %}
         <rect class="hit" x="{{ plot_x + slot_w * loop.index0 }}" y="{{ plot_y }}"
               width="{{ slot_w }}" height="{{ plot_h }}" fill="transparent"
@@ -193,8 +195,8 @@
     area.addEventListener("mousemove", function (evento) {
       tooltip.innerHTML =
         "<strong>" + area.dataset.label + "</strong>" +
-        "<div><span class='legend-dot' style='background:#2a78d6'></span>Combustível: " + area.dataset.comb + "</div>" +
-        "<div><span class='legend-dot' style='background:#1baf7a'></span>Manutenção: " + area.dataset.manut + "</div>" +
+        "<div><span class='legend-dot dot-comb'></span>Combustível: " + area.dataset.comb + "</div>" +
+        "<div><span class='legend-dot dot-manut'></span>Manutenção: " + area.dataset.manut + "</div>" +
         "<div class='tooltip-total'>Total: " + area.dataset.total + "</div>";
       tooltip.hidden = false;
       const caixa = wrap.getBoundingClientRect();
