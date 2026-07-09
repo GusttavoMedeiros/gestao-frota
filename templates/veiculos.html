@@ -32,7 +32,8 @@
           </td>
           <td class="text-end text-nowrap">
             <a href="{{ url_for('editar_veiculo', veiculo_id=v.id) }}" class="btn btn-sm btn-ghost" title="Editar"><i class="bi bi-pencil"></i></a>
-            <form action="{{ url_for('excluir_veiculo', veiculo_id=v.id) }}" method="post" class="d-inline" onsubmit="return confirm('Remover o veículo {{ v.placa }}? Os registros de manutenção e abastecimento dele também serão removidos.');">
+            <form action="{{ url_for('excluir_veiculo', veiculo_id=v.id) }}" method="post" class="d-inline" data-confirm="Remover o veículo {{ v.placa }}? Os registros de manutenção e abastecimento dele também serão removidos.">
+              <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
               <button type="submit" class="btn btn-sm btn-ghost danger" title="Excluir"><i class="bi bi-trash"></i></button>
             </form>
           </td>

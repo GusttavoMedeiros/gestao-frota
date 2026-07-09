@@ -1,10 +1,13 @@
 import csv
 import io
 import math
+import os
 import re
+import secrets
 from datetime import date, datetime, timedelta
 
-from flask import Flask, Response, flash, redirect, render_template, request, url_for
+from flask import (Flask, Response, flash, redirect, render_template, request,
+                   session, url_for)
 from sqlalchemy import func
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import joinedload
@@ -13,11 +16,34 @@ from models import Abastecimento, Manutencao, Motorista, Veiculo, db
 
 app = Flask(__name__)
 app.config["SQLALCHEMY_DATABASE_URI"] = "sqlite:///frota.db"
-app.config["SECRET_KEY"] = "troque-esta-chave-antes-de-usar-em-producao"
+# Em produção, defina a variável de ambiente SECRET_KEY com um valor fixo.
+# Sem ela, uma chave aleatória é gerada a cada execução (seguro para uso local).
+app.config["SECRET_KEY"] = os.environ.get("SECRET_KEY") or secrets.token_hex(32)
 db.init_app(app)
 
 with app.app_context():
     db.create_all()
+
+
+# ---------------- Proteção CSRF ----------------
+
+def csrf_token():
+    """Token por sessão, embutido em todos os formulários POST."""
+    if "_csrf" not in session:
+        session["_csrf"] = secrets.token_hex(16)
+    return session["_csrf"]
+
+
+app.jinja_env.globals["csrf_token"] = csrf_token
+
+
+@app.before_request
+def proteger_csrf():
+    if request.method == "POST":
+        token = session.get("_csrf")
+        if not token or token != request.form.get("_csrf"):
+            flash("Sua sessão expirou. Recarregue a página e tente novamente.", "danger")
+            return redirect(request.referrer or url_for("index"))
 
 
 # ---------------- Filtros de formatação ----------------
@@ -52,6 +78,12 @@ def formato_compacto(valor):
     return formato_milhar(int(valor))
 
 
+# ---------------- Leitura e validação de formulários ----------------
+
+class ErroFormulario(Exception):
+    """Erro de validação com mensagem amigável para o usuário."""
+
+
 def parse_date(value):
     return datetime.strptime(value, "%Y-%m-%d").date() if value else None
 
@@ -70,34 +102,93 @@ def parse_num(value):
     return float(texto)
 
 
-def parse_int(value, default=None):
-    numero = parse_num(value)
-    return int(round(numero)) if numero is not None else default
+def exigir_texto(campo, rotulo, maximo=None):
+    valor = request.form.get(campo, "").strip()
+    if not valor:
+        raise ErroFormulario(f'O campo "{rotulo}" é obrigatório.')
+    if maximo and len(valor) > maximo:
+        raise ErroFormulario(f'O campo "{rotulo}" deve ter no máximo {maximo} caracteres.')
+    return valor
 
 
-def parse_float(value, default=None):
-    numero = parse_num(value)
-    return numero if numero is not None else default
+def ler_numero(campo, rotulo, obrigatorio=True, minimo=None, maximo=None,
+               inteiro=False, positivo=False, padrao=None):
+    bruto = request.form.get(campo, "")
+    try:
+        numero = parse_num(bruto)
+    except ValueError:
+        raise ErroFormulario(f'Não foi possível entender o valor "{bruto}" no campo "{rotulo}".')
+    if numero is None:
+        if obrigatorio:
+            raise ErroFormulario(f'O campo "{rotulo}" é obrigatório.')
+        return padrao
+    if positivo and numero <= 0:
+        raise ErroFormulario(f'O campo "{rotulo}" deve ser maior que zero.')
+    if minimo is not None and numero < minimo:
+        raise ErroFormulario(f'O campo "{rotulo}" não pode ser menor que {formato_milhar(minimo)}.')
+    if maximo is not None and numero > maximo:
+        raise ErroFormulario(f'O campo "{rotulo}" não pode ser maior que {formato_milhar(maximo)}.')
+    return int(round(numero)) if inteiro else numero
 
 
-@app.errorhandler(ValueError)
-def erro_de_valor(e):
-    flash("Não foi possível entender um dos números informados. Verifique os campos e tente novamente.", "danger")
-    return redirect(request.referrer or url_for("index"))
+def ler_data(campo, rotulo, obrigatorio=True):
+    bruto = request.form.get(campo, "")
+    try:
+        valor = parse_date(bruto)
+    except ValueError:
+        raise ErroFormulario(f'Data inválida no campo "{rotulo}".')
+    if valor is None and obrigatorio:
+        raise ErroFormulario(f'O campo "{rotulo}" é obrigatório.')
+    return valor
+
+
+def data_do_arg(nome):
+    """Data vinda da URL (filtros); ignora valores inválidos em vez de quebrar."""
+    try:
+        return parse_date(request.args.get(nome))
+    except ValueError:
+        return None
+
+
+def buscar_veiculo_do_form():
+    bruto = request.form.get("veiculo_id", "")
+    veiculo = db.session.get(Veiculo, int(bruto)) if bruto.isdigit() else None
+    if veiculo is None:
+        raise ErroFormulario("Selecione um veículo válido.")
+    return veiculo
+
+
+def atualizar_odometro(veiculo, km):
+    """Mantém o odômetro do veículo em dia com o maior km registrado."""
+    if km and km > veiculo.quilometragem:
+        veiculo.quilometragem = km
+
+
+def veiculos_ordenados():
+    return Veiculo.query.order_by(Veiculo.placa).all()
 
 
 # ---------------- Painel ----------------
 
 def montar_alertas():
-    """Manutenções previstas vencidas ou próximas de vencer (por data ou km)."""
+    """Alertas gerados apenas pela manutenção MAIS RECENTE de cada tipo por veículo.
+
+    Assim, ao registrar uma nova manutenção do mesmo tipo, o alerta antigo
+    se resolve sozinho. Veículos inativos não geram alertas.
+    """
     hoje = date.today()
-    alertas = []
-    previstas = (
+    manutencoes = (
         Manutencao.query.options(joinedload(Manutencao.veiculo))
-        .filter((Manutencao.proxima_data.isnot(None)) | (Manutencao.proxima_km.isnot(None)))
-        .all()
+        .order_by(Manutencao.data, Manutencao.id).all()
     )
-    for m in previstas:
+    ultimas = {}
+    for m in manutencoes:
+        ultimas[(m.veiculo_id, m.tipo.strip().lower())] = m
+
+    alertas = []
+    for m in ultimas.values():
+        if m.veiculo.status == "inativo":
+            continue
         if m.proxima_data:
             dias = (m.proxima_data - hoje).days
             if dias < 0:
@@ -152,31 +243,42 @@ def index():
     )
 
 
+@app.errorhandler(404)
+def pagina_nao_encontrada(e):
+    return render_template("404.html"), 404
+
+
 # ---------------- Veículos ----------------
 
 @app.route("/veiculos")
 def listar_veiculos():
-    veiculos = Veiculo.query.order_by(Veiculo.placa).all()
-    return render_template("veiculos.html", veiculos=veiculos)
+    return render_template("veiculos.html", veiculos=veiculos_ordenados())
 
 
 def preencher_veiculo(veiculo):
-    veiculo.placa = request.form["placa"].strip().upper()
-    veiculo.marca = request.form["marca"].strip()
-    veiculo.modelo = request.form["modelo"].strip()
-    veiculo.ano = parse_int(request.form["ano"])
-    veiculo.quilometragem = parse_int(request.form["quilometragem"])
-    veiculo.status = request.form["status"]
+    veiculo.placa = exigir_texto("placa", "Placa", 10).upper()
+    veiculo.marca = exigir_texto("marca", "Marca", 50)
+    veiculo.modelo = exigir_texto("modelo", "Modelo", 50)
+    veiculo.ano = ler_numero("ano", "Ano", inteiro=True, minimo=1950, maximo=2100)
+    veiculo.quilometragem = ler_numero("quilometragem", "Quilometragem", inteiro=True, minimo=0)
+    status = request.form.get("status", "ativo")
+    if status not in ("ativo", "manutencao", "inativo"):
+        raise ErroFormulario("Status inválido.")
+    veiculo.status = status
 
 
 @app.route("/veiculos/novo", methods=["GET", "POST"])
 def novo_veiculo():
     if request.method == "POST":
         veiculo = Veiculo()
-        preencher_veiculo(veiculo)
-        db.session.add(veiculo)
         try:
+            preencher_veiculo(veiculo)
+            db.session.add(veiculo)
             db.session.commit()
+        except ErroFormulario as erro:
+            db.session.rollback()
+            flash(str(erro), "danger")
+            return render_template("veiculo_form.html", veiculo=None)
         except IntegrityError:
             db.session.rollback()
             flash("Já existe um veículo cadastrado com essa placa.", "danger")
@@ -190,9 +292,13 @@ def novo_veiculo():
 def editar_veiculo(veiculo_id):
     veiculo = Veiculo.query.get_or_404(veiculo_id)
     if request.method == "POST":
-        preencher_veiculo(veiculo)
         try:
+            preencher_veiculo(veiculo)
             db.session.commit()
+        except ErroFormulario as erro:
+            db.session.rollback()
+            flash(str(erro), "danger")
+            return render_template("veiculo_form.html", veiculo=veiculo)
         except IntegrityError:
             db.session.rollback()
             flash("Já existe um veículo cadastrado com essa placa.", "danger")
@@ -223,22 +329,39 @@ def listar_motoristas():
 
 
 def preencher_motorista(motorista):
-    veiculo_id = request.form.get("veiculo_id") or None
-    motorista.nome = request.form["nome"].strip()
-    motorista.cnh = request.form["cnh"].strip()
-    motorista.categoria_cnh = request.form["categoria_cnh"].strip().upper()
+    motorista.nome = exigir_texto("nome", "Nome completo", 100)
+    motorista.cnh = exigir_texto("cnh", "CNH", 20)
+    motorista.categoria_cnh = exigir_texto("categoria_cnh", "Categoria", 5).upper()
     motorista.telefone = request.form.get("telefone", "").strip()
-    motorista.veiculo_id = int(veiculo_id) if veiculo_id else None
+    bruto = request.form.get("veiculo_id") or None
+    if bruto:
+        if not bruto.isdigit() or db.session.get(Veiculo, int(bruto)) is None:
+            raise ErroFormulario("Selecione um veículo válido.")
+        motorista.veiculo_id = int(bruto)
+    else:
+        motorista.veiculo_id = None
+    # CNH única (verificação em nível de aplicação para não exigir migração do banco)
+    consulta = Motorista.query.filter(Motorista.cnh == motorista.cnh)
+    if motorista.id:
+        consulta = consulta.filter(Motorista.id != motorista.id)
+    duplicado = consulta.first()
+    if duplicado:
+        raise ErroFormulario(f"Já existe um motorista cadastrado com a CNH {motorista.cnh} ({duplicado.nome}).")
 
 
 @app.route("/motoristas/novo", methods=["GET", "POST"])
 def novo_motorista():
-    veiculos = Veiculo.query.order_by(Veiculo.placa).all()
+    veiculos = veiculos_ordenados()
     if request.method == "POST":
         motorista = Motorista()
-        preencher_motorista(motorista)
-        db.session.add(motorista)
-        db.session.commit()
+        try:
+            preencher_motorista(motorista)
+            db.session.add(motorista)
+            db.session.commit()
+        except ErroFormulario as erro:
+            db.session.rollback()
+            flash(str(erro), "danger")
+            return render_template("motorista_form.html", motorista=None, veiculos=veiculos)
         flash("Motorista cadastrado com sucesso!", "success")
         return redirect(url_for("listar_motoristas"))
     return render_template("motorista_form.html", motorista=None, veiculos=veiculos)
@@ -247,10 +370,15 @@ def novo_motorista():
 @app.route("/motoristas/<int:motorista_id>/editar", methods=["GET", "POST"])
 def editar_motorista(motorista_id):
     motorista = Motorista.query.get_or_404(motorista_id)
-    veiculos = Veiculo.query.order_by(Veiculo.placa).all()
+    veiculos = veiculos_ordenados()
     if request.method == "POST":
-        preencher_motorista(motorista)
-        db.session.commit()
+        try:
+            preencher_motorista(motorista)
+            db.session.commit()
+        except ErroFormulario as erro:
+            db.session.rollback()
+            flash(str(erro), "danger")
+            return render_template("motorista_form.html", motorista=motorista, veiculos=veiculos)
         flash("Motorista atualizado com sucesso!", "success")
         return redirect(url_for("listar_motoristas"))
     return render_template("motorista_form.html", motorista=motorista, veiculos=veiculos)
@@ -277,24 +405,33 @@ def listar_manutencoes():
 
 
 def preencher_manutencao(manutencao):
-    manutencao.veiculo_id = int(request.form["veiculo_id"])
-    manutencao.tipo = request.form["tipo"].strip()
-    manutencao.data = parse_date(request.form["data"])
-    manutencao.quilometragem = parse_int(request.form["quilometragem"])
-    manutencao.custo = parse_float(request.form.get("custo"), 0)
+    veiculo = buscar_veiculo_do_form()
+    manutencao.veiculo_id = veiculo.id
+    manutencao.tipo = exigir_texto("tipo", "Tipo de manutenção", 50)
+    manutencao.data = ler_data("data", "Data")
+    manutencao.quilometragem = ler_numero("quilometragem", "KM na data", inteiro=True, minimo=0)
+    manutencao.custo = ler_numero("custo", "Custo", obrigatorio=False, minimo=0, padrao=0)
     manutencao.descricao = request.form.get("descricao", "").strip()
-    manutencao.proxima_data = parse_date(request.form.get("proxima_data"))
-    manutencao.proxima_km = parse_int(request.form.get("proxima_km"))
+    manutencao.proxima_data = ler_data("proxima_data", "Próxima manutenção (data)", obrigatorio=False)
+    manutencao.proxima_km = ler_numero("proxima_km", "Próxima manutenção (km)",
+                                       obrigatorio=False, inteiro=True, minimo=0)
+    atualizar_odometro(veiculo, manutencao.quilometragem)
 
 
 @app.route("/manutencoes/nova", methods=["GET", "POST"])
 def nova_manutencao():
-    veiculos = Veiculo.query.order_by(Veiculo.placa).all()
+    veiculos = veiculos_ordenados()
     if request.method == "POST":
         manutencao = Manutencao()
-        preencher_manutencao(manutencao)
-        db.session.add(manutencao)
-        db.session.commit()
+        try:
+            preencher_manutencao(manutencao)
+            db.session.add(manutencao)
+            db.session.commit()
+        except ErroFormulario as erro:
+            db.session.rollback()
+            flash(str(erro), "danger")
+            return render_template("manutencao_form.html", manutencao=None, veiculos=veiculos,
+                                   today=date.today().isoformat())
         flash("Manutenção registrada com sucesso!", "success")
         return redirect(url_for("listar_manutencoes"))
     return render_template("manutencao_form.html", manutencao=None, veiculos=veiculos,
@@ -304,10 +441,16 @@ def nova_manutencao():
 @app.route("/manutencoes/<int:manutencao_id>/editar", methods=["GET", "POST"])
 def editar_manutencao(manutencao_id):
     manutencao = Manutencao.query.get_or_404(manutencao_id)
-    veiculos = Veiculo.query.order_by(Veiculo.placa).all()
+    veiculos = veiculos_ordenados()
     if request.method == "POST":
-        preencher_manutencao(manutencao)
-        db.session.commit()
+        try:
+            preencher_manutencao(manutencao)
+            db.session.commit()
+        except ErroFormulario as erro:
+            db.session.rollback()
+            flash(str(erro), "danger")
+            return render_template("manutencao_form.html", manutencao=manutencao, veiculos=veiculos,
+                                   today=date.today().isoformat())
         flash("Manutenção atualizada com sucesso!", "success")
         return redirect(url_for("listar_manutencoes"))
     return render_template("manutencao_form.html", manutencao=manutencao, veiculos=veiculos,
@@ -429,8 +572,8 @@ def dados_relatorio(inicio, fim):
 
 def periodo_do_filtro():
     hoje = date.today()
-    fim = parse_date(request.args.get("fim")) or hoje
-    inicio = parse_date(request.args.get("inicio")) or meses_atras(hoje, 5)
+    fim = data_do_arg("fim") or hoje
+    inicio = data_do_arg("inicio") or meses_atras(hoje, 5)
     if inicio > fim:
         inicio, fim = fim, inicio
     return inicio, fim
@@ -455,6 +598,11 @@ def relatorios():
     )
 
 
+def celula_segura(texto):
+    """Evita que planilhas interpretem o conteúdo como fórmula (CSV injection)."""
+    return "'" + texto if texto and texto[0] in "=+-@" else texto
+
+
 @app.route("/relatorios/exportar")
 def exportar_relatorio():
     inicio, fim = periodo_do_filtro()
@@ -472,7 +620,7 @@ def exportar_relatorio():
                        "Custo manutenção (R$)", "Custo total (R$)", "Consumo (km/L)", "Custo por km (R$)"])
     for l in linhas:
         v = l["veiculo"]
-        escritor.writerow([v.placa, f"{v.marca} {v.modelo}",
+        escritor.writerow([celula_segura(v.placa), celula_segura(f"{v.marca} {v.modelo}"),
                            l["km_rodados"] if l["km_rodados"] is not None else "",
                            num(l["litros"], 1), num(l["custo_combustivel"]),
                            num(l["custo_manutencao"]), num(l["custo_total"]),
@@ -519,26 +667,45 @@ def listar_abastecimentos():
     return render_template("abastecimentos.html", abastecimentos=abastecimentos)
 
 
+COMBUSTIVEIS = ("gasolina", "etanol", "diesel", "gnv")
+
+
 def preencher_abastecimento(abastecimento):
-    motorista_id = request.form.get("motorista_id") or None
-    abastecimento.veiculo_id = int(request.form["veiculo_id"])
-    abastecimento.motorista_id = int(motorista_id) if motorista_id else None
-    abastecimento.data = parse_date(request.form["data"])
-    abastecimento.tipo_combustivel = request.form["tipo_combustivel"]
-    abastecimento.litros = parse_float(request.form["litros"])
-    abastecimento.valor_total = parse_float(request.form["valor_total"])
-    abastecimento.quilometragem = parse_int(request.form["quilometragem"])
+    veiculo = buscar_veiculo_do_form()
+    abastecimento.veiculo_id = veiculo.id
+    bruto = request.form.get("motorista_id") or None
+    if bruto:
+        if not bruto.isdigit() or db.session.get(Motorista, int(bruto)) is None:
+            raise ErroFormulario("Selecione um motorista válido.")
+        abastecimento.motorista_id = int(bruto)
+    else:
+        abastecimento.motorista_id = None
+    abastecimento.data = ler_data("data", "Data")
+    combustivel = request.form.get("tipo_combustivel", "")
+    if combustivel not in COMBUSTIVEIS:
+        raise ErroFormulario("Combustível inválido.")
+    abastecimento.tipo_combustivel = combustivel
+    abastecimento.litros = ler_numero("litros", "Litros", positivo=True)
+    abastecimento.valor_total = ler_numero("valor_total", "Valor total", minimo=0)
+    abastecimento.quilometragem = ler_numero("quilometragem", "KM na data", inteiro=True, minimo=0)
+    atualizar_odometro(veiculo, abastecimento.quilometragem)
 
 
 @app.route("/abastecimentos/novo", methods=["GET", "POST"])
 def novo_abastecimento():
-    veiculos = Veiculo.query.order_by(Veiculo.placa).all()
+    veiculos = veiculos_ordenados()
     motoristas = Motorista.query.order_by(Motorista.nome).all()
     if request.method == "POST":
         abastecimento = Abastecimento()
-        preencher_abastecimento(abastecimento)
-        db.session.add(abastecimento)
-        db.session.commit()
+        try:
+            preencher_abastecimento(abastecimento)
+            db.session.add(abastecimento)
+            db.session.commit()
+        except ErroFormulario as erro:
+            db.session.rollback()
+            flash(str(erro), "danger")
+            return render_template("abastecimento_form.html", abastecimento=None, veiculos=veiculos,
+                                   motoristas=motoristas, today=date.today().isoformat())
         flash("Abastecimento registrado com sucesso!", "success")
         return redirect(url_for("listar_abastecimentos"))
     return render_template("abastecimento_form.html", abastecimento=None, veiculos=veiculos,
@@ -548,11 +715,18 @@ def novo_abastecimento():
 @app.route("/abastecimentos/<int:abastecimento_id>/editar", methods=["GET", "POST"])
 def editar_abastecimento(abastecimento_id):
     abastecimento = Abastecimento.query.get_or_404(abastecimento_id)
-    veiculos = Veiculo.query.order_by(Veiculo.placa).all()
+    veiculos = veiculos_ordenados()
     motoristas = Motorista.query.order_by(Motorista.nome).all()
     if request.method == "POST":
-        preencher_abastecimento(abastecimento)
-        db.session.commit()
+        try:
+            preencher_abastecimento(abastecimento)
+            db.session.commit()
+        except ErroFormulario as erro:
+            db.session.rollback()
+            flash(str(erro), "danger")
+            return render_template("abastecimento_form.html", abastecimento=abastecimento,
+                                   veiculos=veiculos, motoristas=motoristas,
+                                   today=date.today().isoformat())
         flash("Abastecimento atualizado com sucesso!", "success")
         return redirect(url_for("listar_abastecimentos"))
     return render_template("abastecimento_form.html", abastecimento=abastecimento, veiculos=veiculos,
@@ -569,4 +743,5 @@ def excluir_abastecimento(abastecimento_id):
 
 
 if __name__ == "__main__":
-    app.run(debug=True)
+    # Em produção, defina FLASK_DEBUG=0 e use um servidor WSGI (ex.: waitress).
+    app.run(debug=os.environ.get("FLASK_DEBUG", "1") == "1")

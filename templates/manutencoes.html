@@ -20,7 +20,7 @@
         {% for m in manutencoes %}
         <tr>
           <td class="cell-strong">{{ m.veiculo.placa }}</td>
-          <td>{{ m.tipo }}{% if m.descricao %} <i class="bi bi-info-circle text-secondary" title="{{ m.descricao }}"></i>{% endif %}</td>
+          <td>{{ m.tipo }}{% if m.descricao %} <i class="bi bi-info-circle text-secondary" title="{{ m.descricao }}" aria-label="{{ m.descricao }}" role="img"></i>{% endif %}</td>
           <td class="cell-muted">{{ m.data|data_br }}</td>
           <td class="text-end">{{ m.quilometragem|milhar }}</td>
           <td class="text-end">{{ m.custo|brl }}</td>
@@ -31,7 +31,8 @@
           </td>
           <td class="text-end text-nowrap">
             <a href="{{ url_for('editar_manutencao', manutencao_id=m.id) }}" class="btn btn-sm btn-ghost" title="Editar"><i class="bi bi-pencil"></i></a>
-            <form action="{{ url_for('excluir_manutencao', manutencao_id=m.id) }}" method="post" class="d-inline" onsubmit="return confirm('Remover este registro de manutenção?');">
+            <form action="{{ url_for('excluir_manutencao', manutencao_id=m.id) }}" method="post" class="d-inline" data-confirm="Remover este registro de manutenção?">
+              <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
               <button type="submit" class="btn btn-sm btn-ghost danger" title="Excluir"><i class="bi bi-trash"></i></button>
             </form>
           </td>
