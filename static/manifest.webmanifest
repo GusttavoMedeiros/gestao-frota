@@ -1,0 +1,20 @@
+{
+  "name": "Gestão de Frota",
+  "short_name": "Frota",
+  "description": "Sistema de gestão de frota — veículos, motoristas, manutenções, abastecimentos e relatórios.",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait-primary",
+  "background_color": "#e9ecf1",
+  "theme_color": "#2563eb",
+  "lang": "pt-BR",
+  "icons": [
+    {
+      "src": "/static/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}

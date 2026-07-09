@@ -67,15 +67,15 @@
       <div class="card-header-flat"><i class="bi bi-wrench-adjustable text-secondary"></i> Últimas manutenções</div>
       {% if ultimas_manutencoes %}
       <div class="table-responsive">
-        <table class="table">
+        <table class="table table-mobile">
           <thead><tr><th>Veículo</th><th>Tipo</th><th>Data</th><th class="text-end">Custo</th></tr></thead>
           <tbody>
             {% for m in ultimas_manutencoes %}
             <tr>
-              <td class="cell-strong">{{ m.veiculo.placa }}</td>
-              <td>{{ m.tipo }}</td>
-              <td class="cell-muted">{{ m.data|data_br }}</td>
-              <td class="text-end">{{ m.custo|brl }}</td>
+              <td class="cell-strong" data-label="Veículo">{{ m.veiculo.placa }}</td>
+              <td data-label="Tipo">{{ m.tipo }}</td>
+              <td class="cell-muted" data-label="Data">{{ m.data|data_br }}</td>
+              <td class="text-end" data-label="Custo">{{ m.custo|brl }}</td>
             </tr>
             {% endfor %}
           </tbody>
@@ -94,15 +94,15 @@
       <div class="card-header-flat"><i class="bi bi-fuel-pump text-secondary"></i> Últimos abastecimentos</div>
       {% if ultimos_abastecimentos %}
       <div class="table-responsive">
-        <table class="table">
+        <table class="table table-mobile">
           <thead><tr><th>Veículo</th><th>Data</th><th class="text-end">Litros</th><th class="text-end">Valor</th></tr></thead>
           <tbody>
             {% for a in ultimos_abastecimentos %}
             <tr>
-              <td class="cell-strong">{{ a.veiculo.placa }}</td>
-              <td class="cell-muted">{{ a.data|data_br }}</td>
-              <td class="text-end">{{ "%.1f"|format(a.litros) }} L</td>
-              <td class="text-end">{{ a.valor_total|brl }}</td>
+              <td class="cell-strong" data-label="Veículo">{{ a.veiculo.placa }}</td>
+              <td class="cell-muted" data-label="Data">{{ a.data|data_br }}</td>
+              <td class="text-end" data-label="Litros">{{ "%.1f"|format(a.litros) }} L</td>
+              <td class="text-end" data-label="Valor">{{ a.valor_total|brl }}</td>
             </tr>
             {% endfor %}
           </tbody>

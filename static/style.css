@@ -63,6 +63,18 @@
   --ease: cubic-bezier(.4, 0, .2, 1);
 }
 
+html {
+  /* Impede o celular de aumentar o texto sozinho (causa comum de "zoom") */
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+}
+
+/* No celular, nada pode empurrar a página além da largura da tela.
+   (Fica só no mobile para não quebrar a sidebar fixa no desktop.) */
+@media (max-width: 991.98px) {
+  html, body { overflow-x: hidden; }
+}
+
 body {
   background: var(--bg);
   color: var(--text);
@@ -224,7 +236,8 @@ h1, h2, h3, h4, h5, .page-title, .sidebar-brand strong {
 .card-header-flat {
   display: flex;
   align-items: center;
-  gap: .6rem;
+  flex-wrap: wrap;
+  gap: .5rem .6rem;
   padding: 1rem 1.4rem;
   font-weight: 600;
   font-size: .95rem;
@@ -531,10 +544,11 @@ h1, h2, h3, h4, h5, .page-title, .sidebar-brand strong {
     align-items: center;
     justify-content: space-between;
     gap: 1rem;
-    padding: .32rem 1.2rem;
+    padding: .38rem 1.1rem;
     border: 0;
     text-align: right;
     white-space: normal;
+    overflow-wrap: anywhere;
   }
 
   .table-mobile td[data-label]::before {
@@ -555,6 +569,36 @@ h1, h2, h3, h4, h5, .page-title, .sidebar-brand strong {
 
   .table-mobile tfoot .linha-total { border-top: 2px solid var(--border-strong); }
   .table-mobile tfoot .linha-total td { border-top: 0; background: var(--surface-2); }
+}
+
+/* ===== Ajustes de app no celular ===== */
+@media (max-width: 575.98px) {
+  /* Botão de ação do topo em largura total (toque fácil, cara de app) */
+  .page-header .btn { width: 100%; }
+
+  /* Barra de ações do formulário empilhada e cheia */
+  .form-actions { flex-direction: column; }
+  .form-actions .btn { width: 100%; }
+
+  /* Legenda do gráfico desce para a linha de baixo, sem transbordar */
+  .card-header-flat .chart-legend { width: 100%; margin-left: 0; }
+
+  /* Filtros de relatório em coluna, campos ocupando a largura */
+  .filtro-linha { gap: .75rem; }
+  .filtro-linha > div,
+  .filtro-linha .filtro-acao,
+  .filtro-linha .form-control { width: 100%; }
+  .filtro-acao .btn { width: 100%; }
+  .filtro-atalhos { margin-left: 0; }
+
+  /* Modal encosta menos nas bordas */
+  .modal-dialog { margin: .75rem; }
+}
+
+/* Alvos de toque confortáveis em telas sensíveis ao toque */
+@media (hover: none) and (pointer: coarse) {
+  .sidebar-nav .nav-link { padding-top: .72rem; padding-bottom: .72rem; }
+  .btn-ghost, .btn-ghost.btn-sm { width: 38px; height: 38px; }
 }
 
 /* ===== List (alertas do painel) ===== */
