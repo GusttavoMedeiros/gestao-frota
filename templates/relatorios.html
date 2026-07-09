@@ -131,7 +131,7 @@
 <div class="card table-card">
   <div class="card-header-flat"><i class="bi bi-truck text-secondary"></i> Resumo por veículo</div>
   <div class="table-responsive">
-    <table class="table">
+    <table class="table table-mobile">
       <thead>
         <tr>
           <th>Veículo</th><th class="text-end">Km rodados</th><th class="text-end">Litros</th>
@@ -142,27 +142,27 @@
       <tbody>
         {% for l in linhas %}
         <tr>
-          <td class="cell-strong">{{ l.veiculo.placa }} <span class="cell-muted fw-normal">· {{ l.veiculo.marca }} {{ l.veiculo.modelo }}</span></td>
-          <td class="text-end">{% if l.km_rodados is not none %}{{ l.km_rodados|milhar }}{% else %}—{% endif %}</td>
-          <td class="text-end">{{ "%.1f"|format(l.litros) }}</td>
-          <td class="text-end">{{ l.custo_combustivel|brl }}</td>
-          <td class="text-end">{{ l.custo_manutencao|brl }}</td>
-          <td class="text-end cell-strong">{{ l.custo_total|brl }}</td>
-          <td class="text-end">{% if l.consumo %}{{ "%.1f"|format(l.consumo) }} km/L{% else %}—{% endif %}</td>
-          <td class="text-end">{% if l.custo_km %}{{ l.custo_km|brl }}{% else %}—{% endif %}</td>
+          <td class="cell-strong" data-label="Veículo">{{ l.veiculo.placa }} <span class="cell-muted fw-normal">· {{ l.veiculo.marca }} {{ l.veiculo.modelo }}</span></td>
+          <td class="text-end" data-label="Km rodados">{% if l.km_rodados is not none %}{{ l.km_rodados|milhar }}{% else %}—{% endif %}</td>
+          <td class="text-end" data-label="Litros">{{ "%.1f"|format(l.litros) }}</td>
+          <td class="text-end" data-label="Combustível">{{ l.custo_combustivel|brl }}</td>
+          <td class="text-end" data-label="Manutenção">{{ l.custo_manutencao|brl }}</td>
+          <td class="text-end cell-strong" data-label="Custo total">{{ l.custo_total|brl }}</td>
+          <td class="text-end" data-label="Consumo">{% if l.consumo %}{{ "%.1f"|format(l.consumo) }} km/L{% else %}—{% endif %}</td>
+          <td class="text-end" data-label="Custo/km">{% if l.custo_km %}{{ l.custo_km|brl }}{% else %}—{% endif %}</td>
         </tr>
         {% endfor %}
       </tbody>
       <tfoot>
         <tr class="linha-total">
-          <td>Total</td>
-          <td class="text-end">{{ totais.km_rodados|milhar }}</td>
-          <td class="text-end">{{ "%.1f"|format(totais.litros) }}</td>
-          <td class="text-end">{{ totais.custo_combustivel|brl }}</td>
-          <td class="text-end">{{ totais.custo_manutencao|brl }}</td>
-          <td class="text-end">{{ totais.custo_total|brl }}</td>
-          <td class="text-end">—</td>
-          <td class="text-end">—</td>
+          <td data-label="Totais do período">Total</td>
+          <td class="text-end" data-label="Km rodados">{{ totais.km_rodados|milhar }}</td>
+          <td class="text-end" data-label="Litros">{{ "%.1f"|format(totais.litros) }}</td>
+          <td class="text-end" data-label="Combustível">{{ totais.custo_combustivel|brl }}</td>
+          <td class="text-end" data-label="Manutenção">{{ totais.custo_manutencao|brl }}</td>
+          <td class="text-end" data-label="Custo total">{{ totais.custo_total|brl }}</td>
+          <td class="text-end d-none d-md-table-cell">—</td>
+          <td class="text-end d-none d-md-table-cell">—</td>
         </tr>
       </tfoot>
     </table>

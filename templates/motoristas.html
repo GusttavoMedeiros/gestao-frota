@@ -12,18 +12,18 @@
 <div class="card table-card">
   {% if motoristas %}
   <div class="table-responsive">
-    <table class="table">
+    <table class="table table-mobile">
       <thead>
         <tr><th>Nome</th><th>CNH</th><th>Categoria</th><th>Telefone</th><th>Veículo vinculado</th><th class="text-end">Ações</th></tr>
       </thead>
       <tbody>
         {% for m in motoristas %}
         <tr>
-          <td class="cell-strong">{{ m.nome }}</td>
-          <td class="cell-muted">{{ m.cnh }}</td>
-          <td><span class="badge-soft badge-soft-info">{{ m.categoria_cnh }}</span></td>
-          <td class="cell-muted">{{ m.telefone or "—" }}</td>
-          <td>{{ m.veiculo.placa if m.veiculo else "—" }}</td>
+          <td class="cell-strong" data-label="Nome">{{ m.nome }}</td>
+          <td class="cell-muted" data-label="CNH">{{ m.cnh }}</td>
+          <td data-label="Categoria"><span class="badge-soft badge-soft-info">{{ m.categoria_cnh }}</span></td>
+          <td class="cell-muted" data-label="Telefone">{{ m.telefone or "—" }}</td>
+          <td data-label="Veículo vinculado">{{ m.veiculo.placa if m.veiculo else "—" }}</td>
           <td class="text-end text-nowrap">
             <a href="{{ url_for('editar_motorista', motorista_id=m.id) }}" class="btn btn-sm btn-ghost" title="Editar"><i class="bi bi-pencil"></i></a>
             <form action="{{ url_for('excluir_motorista', motorista_id=m.id) }}" method="post" class="d-inline" data-confirm="Remover o motorista {{ m.nome }}?">

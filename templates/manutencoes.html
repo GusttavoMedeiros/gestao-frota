@@ -12,19 +12,19 @@
 <div class="card table-card">
   {% if manutencoes %}
   <div class="table-responsive">
-    <table class="table">
+    <table class="table table-mobile">
       <thead>
         <tr><th>Veículo</th><th>Tipo</th><th>Data</th><th class="text-end">KM</th><th class="text-end">Custo</th><th>Próxima prevista</th><th class="text-end">Ações</th></tr>
       </thead>
       <tbody>
         {% for m in manutencoes %}
         <tr>
-          <td class="cell-strong">{{ m.veiculo.placa }}</td>
-          <td>{{ m.tipo }}{% if m.descricao %} <i class="bi bi-info-circle text-secondary" title="{{ m.descricao }}" aria-label="{{ m.descricao }}" role="img"></i>{% endif %}</td>
-          <td class="cell-muted">{{ m.data|data_br }}</td>
-          <td class="text-end">{{ m.quilometragem|milhar }}</td>
-          <td class="text-end">{{ m.custo|brl }}</td>
-          <td class="cell-muted">
+          <td class="cell-strong" data-label="Veículo">{{ m.veiculo.placa }}</td>
+          <td data-label="Tipo">{{ m.tipo }}{% if m.descricao %} <i class="bi bi-info-circle text-secondary" title="{{ m.descricao }}" aria-label="{{ m.descricao }}" role="img"></i>{% endif %}</td>
+          <td class="cell-muted" data-label="Data">{{ m.data|data_br }}</td>
+          <td class="text-end" data-label="KM">{{ m.quilometragem|milhar }}</td>
+          <td class="text-end" data-label="Custo">{{ m.custo|brl }}</td>
+          <td class="cell-muted" data-label="Próxima prevista">
             {% if m.proxima_data %}{{ m.proxima_data|data_br }}{% endif %}
             {% if m.proxima_km %}{% if m.proxima_data %} · {% endif %}{{ m.proxima_km|milhar }} km{% endif %}
             {% if not m.proxima_data and not m.proxima_km %}—{% endif %}

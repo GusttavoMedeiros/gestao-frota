@@ -12,7 +12,7 @@
 <div class="card table-card">
   {% if veiculos %}
   <div class="table-responsive">
-    <table class="table">
+    <table class="table table-mobile">
       <thead>
         <tr>
           <th>Placa</th><th>Veículo</th><th>Ano</th><th class="text-end">Quilometragem</th><th>Status</th><th class="text-end">Ações</th>
@@ -21,11 +21,11 @@
       <tbody>
         {% for v in veiculos %}
         <tr>
-          <td class="cell-strong">{{ v.placa }}</td>
-          <td>{{ v.marca }} {{ v.modelo }}</td>
-          <td class="cell-muted">{{ v.ano }}</td>
-          <td class="text-end">{{ v.quilometragem|milhar }} km</td>
-          <td>
+          <td class="cell-strong" data-label="Placa">{{ v.placa }}</td>
+          <td data-label="Veículo">{{ v.marca }} {{ v.modelo }}</td>
+          <td class="cell-muted" data-label="Ano">{{ v.ano }}</td>
+          <td class="text-end" data-label="Quilometragem">{{ v.quilometragem|milhar }} km</td>
+          <td data-label="Status">
             {% if v.status == 'ativo' %}<span class="badge-soft badge-soft-success">Ativo</span>
             {% elif v.status == 'manutencao' %}<span class="badge-soft badge-soft-warning">Manutenção</span>
             {% else %}<span class="badge-soft badge-soft-secondary">Inativo</span>{% endif %}

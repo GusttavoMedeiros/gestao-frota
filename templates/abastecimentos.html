@@ -12,21 +12,21 @@
 <div class="card table-card">
   {% if abastecimentos %}
   <div class="table-responsive">
-    <table class="table">
+    <table class="table table-mobile">
       <thead>
         <tr><th>Veículo</th><th>Motorista</th><th>Data</th><th>Combustível</th><th class="text-end">Litros</th><th class="text-end">Valor</th><th class="text-end">KM</th><th class="text-end">Consumo</th><th class="text-end">Ações</th></tr>
       </thead>
       <tbody>
         {% for a in abastecimentos %}
         <tr>
-          <td class="cell-strong">{{ a.veiculo.placa }}</td>
-          <td class="cell-muted">{{ a.motorista.nome if a.motorista else "—" }}</td>
-          <td class="cell-muted">{{ a.data|data_br }}</td>
-          <td><span class="badge-soft badge-soft-secondary">{{ a.tipo_combustivel|capitalize }}</span></td>
-          <td class="text-end">{{ "%.1f"|format(a.litros) }} L</td>
-          <td class="text-end">{{ a.valor_total|brl }}</td>
-          <td class="text-end">{{ a.quilometragem|milhar }}</td>
-          <td class="text-end">{% if a.consumo %}{{ "%.1f"|format(a.consumo) }} km/L{% else %}—{% endif %}</td>
+          <td class="cell-strong" data-label="Veículo">{{ a.veiculo.placa }}</td>
+          <td class="cell-muted" data-label="Motorista">{{ a.motorista.nome if a.motorista else "—" }}</td>
+          <td class="cell-muted" data-label="Data">{{ a.data|data_br }}</td>
+          <td data-label="Combustível"><span class="badge-soft badge-soft-secondary">{{ a.tipo_combustivel|capitalize }}</span></td>
+          <td class="text-end" data-label="Litros">{{ "%.1f"|format(a.litros) }} L</td>
+          <td class="text-end" data-label="Valor">{{ a.valor_total|brl }}</td>
+          <td class="text-end" data-label="KM">{{ a.quilometragem|milhar }}</td>
+          <td class="text-end" data-label="Consumo">{% if a.consumo %}{{ "%.1f"|format(a.consumo) }} km/L{% else %}—{% endif %}</td>
           <td class="text-end text-nowrap">
             <a href="{{ url_for('editar_abastecimento', abastecimento_id=a.id) }}" class="btn btn-sm btn-ghost" title="Editar"><i class="bi bi-pencil"></i></a>
             <form action="{{ url_for('excluir_abastecimento', abastecimento_id=a.id) }}" method="post" class="d-inline" data-confirm="Remover este registro de abastecimento?">
