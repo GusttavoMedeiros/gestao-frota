@@ -37,6 +37,10 @@ endereço próprio e HTTPS (cadeado), para usar como app no celular de qualquer 
 
 1. Vá na aba **Web** → **Add a new web app** → **Next**.
 2. Escolha **Manual configuration** (não escolha "Flask") → **Python 3.10** → **Next**.
+
+   > ⚠️ A versão de Python escolhida aqui deve ser a **mesma** usada no comando
+   > `python3.10 -m venv venv` do passo 2. Se o site oferecer outra versão
+   > (ex.: 3.11), use-a nos dois lugares.
 3. Na tela do app, ajuste:
    - **Source code:** `/home/SEU_USUARIO/gestao-frota`
    - **Virtualenv:** `/home/SEU_USUARIO/gestao-frota/venv`

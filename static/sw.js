@@ -1,10 +1,10 @@
 /* Service worker do Gestão de Frota (PWA).
-   - Guarda o "esqueleto" (CSS, fontes, ícones) para carregar rápido / offline.
-   - Páginas e dados são sempre buscados na rede primeiro (nunca mostra dado velho);
-     só recorre ao cache se estiver sem internet.
+   - Arquivos estáticos: responde do cache (rápido) e atualiza em segundo
+     plano — na próxima visita, a versão nova já está valendo.
+   - Páginas e dados: sempre rede primeiro (nunca mostra dado velho).
    - Nunca intercepta POST (login, cadastros, exclusões passam direto). */
 
-const CACHE = 'frota-v1';
+const CACHE = 'frota-v2';
 const SHELL = [
   '/static/style.css',
   '/static/vendor/bootstrap/bootstrap.min.css',
@@ -12,6 +12,7 @@ const SHELL = [
   '/static/vendor/bootstrap-icons/bootstrap-icons.min.css',
   '/static/vendor/fonts/fonts.css',
   '/static/icon.svg',
+  '/static/icon-192.png',
 ];
 
 self.addEventListener('install', function (event) {
@@ -39,21 +40,24 @@ self.addEventListener('fetch', function (event) {
   const url = new URL(req.url);
   if (url.origin !== self.location.origin) return;  // só o próprio site
 
-  // Arquivos estáticos: cache primeiro (rápido), rede se não tiver.
+  // Estáticos: cache primeiro + atualização em segundo plano
+  // (stale-while-revalidate: rápido agora, fresco na próxima visita).
   if (url.pathname.startsWith('/static/')) {
     event.respondWith(
-      caches.match(req).then(function (hit) {
-        return hit || fetch(req).then(function (resp) {
-          const copia = resp.clone();
-          caches.open(CACHE).then(function (c) { c.put(req, copia); });
-          return resp;
+      caches.open(CACHE).then(function (cache) {
+        return cache.match(req).then(function (guardado) {
+          const atualiza = fetch(req).then(function (resp) {
+            if (resp && resp.ok) cache.put(req, resp.clone());
+            return resp;
+          }).catch(function () { return guardado; });
+          return guardado || atualiza;
         });
       })
     );
     return;
   }
 
-  // Páginas e dados: rede primeiro; cache só como reserva offline.
+  // Páginas e dados: rede primeiro; sem rede, tenta o cache como reserva.
   event.respondWith(
     fetch(req).catch(function () { return caches.match(req); })
   );

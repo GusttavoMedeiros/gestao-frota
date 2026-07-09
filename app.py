@@ -4,6 +4,7 @@ import math
 import os
 import re
 import secrets
+import time
 from datetime import date, datetime, timedelta
 
 from flask import (Flask, Response, flash, redirect, render_template, request,
@@ -51,13 +52,29 @@ def csrf_token():
 app.jinja_env.globals["csrf_token"] = csrf_token
 
 
+def redireciona_local(padrao="index"):
+    """Redireciona para a página anterior somente se ela for deste próprio site."""
+    anterior = request.referrer or ""
+    if anterior.startswith(request.host_url):
+        return redirect(anterior)
+    return redirect(url_for(padrao))
+
+
 @app.before_request
 def proteger_csrf():
     if request.method == "POST":
         token = session.get("_csrf")
         if not token or token != request.form.get("_csrf"):
             flash("Sua sessão expirou. Recarregue a página e tente novamente.", "danger")
-            return redirect(request.referrer or url_for("index"))
+            return redireciona_local()
+
+
+@app.after_request
+def cabecalhos_de_seguranca(resposta):
+    resposta.headers.setdefault("X-Content-Type-Options", "nosniff")
+    resposta.headers.setdefault("X-Frame-Options", "DENY")
+    resposta.headers.setdefault("Referrer-Policy", "same-origin")
+    return resposta
 
 
 # ---------------- Autenticação ----------------
@@ -71,10 +88,11 @@ ENDPOINTS_PUBLICOS = {"login", "logout", "configurar", "service_worker", "static
 def exigir_login():
     if request.endpoint in ENDPOINTS_PUBLICOS:
         return
+    if "user_id" in session:
+        return  # já logado — segue sem consultar o banco
     if Usuario.query.count() == 0:
         return redirect(url_for("configurar"))
-    if "user_id" not in session:
-        return redirect(url_for("login"))
+    return redirect(url_for("login"))
 
 
 @app.context_processor
@@ -114,6 +132,8 @@ def configurar():
 
 @app.route("/login", methods=["GET", "POST"])
 def login():
+    if "user_id" in session:
+        return redirect(url_for("index"))
     if Usuario.query.count() == 0:
         return redirect(url_for("configurar"))
     if request.method == "POST":
@@ -127,6 +147,7 @@ def login():
                 session["_csrf"] = csrf
             session["user_id"] = conta.id
             return redirect(url_for("index"))
+        time.sleep(0.6)  # freia tentativas automatizadas de adivinhar a senha
         flash("Usuário ou senha incorretos.", "danger")
         return render_template("login.html", usuario=usuario)
     return render_template("login.html")
