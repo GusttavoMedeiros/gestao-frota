@@ -234,12 +234,15 @@ h1, h2, h3, h4, h5, .page-title, .sidebar-brand strong {
 }
 .card-header-flat i { color: var(--muted); font-size: 1rem; }
 
-/* Stat cards */
+/* Stat cards — layout vertical centralizado
+   (têm .card do Bootstrap, que já impõe flex-direction: column) */
 .stat-card {
   display: flex;
+  flex-direction: column;
   align-items: center;
-  gap: 1rem;
-  padding: 1.3rem 1.4rem;
+  text-align: center;
+  gap: .55rem;
+  padding: 1.4rem;
   height: 100%;
 }
 .stat-card:hover { border-color: var(--border-strong); box-shadow: var(--shadow-md); }
