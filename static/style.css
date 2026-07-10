@@ -1,61 +1,61 @@
 /* ===== Design system — Gestão de Frota =====
-   Direção: "Operacional Limpo" (opção C)
-   Tema claro, sidebar branca legível, um único acento azul,
+   Direção: MODO ESCURO (confortável para olhos sensíveis)
+   Fundo escuro, texto claro, um único acento azul,
    superfícies chapadas, muito respiro, números monoespaçados. */
 
 :root {
-  /* Superfícies e neutros */
-  --bg:            #e9ecf1;  /* fundo cinza suave (menos ofuscante que branco) */
-  --surface:       #ffffff;
-  --surface-2:     #f4f6f9;
-  --border:        #dde1e9;
-  --border-strong: #ccd2dd;
+  /* Superfícies e neutros (escuros) */
+  --bg:            #0f151e;  /* fundo escuro (bem menos luz na tela) */
+  --surface:       #1a2432;  /* cartões */
+  --surface-2:     #212d3c;  /* cabeçalhos de tabela, hover */
+  --border:        #2a3644;
+  --border-strong: #384657;
 
-  /* Texto */
-  --text:      #1a2432;
-  --text-soft: #3d4757;
-  --muted:     #6b7482;
-  --muted-2:   #99a1af;
+  /* Texto (claro sobre escuro) */
+  --text:      #e6ebf2;
+  --text-soft: #c2cbd8;
+  --muted:     #8b97a8;
+  --muted-2:   #6b7688;
 
-  /* Acento único (azul) */
-  --accent:        #2563eb;
-  --accent-dark:   #1d4ed8;
-  --accent-darker: #1e40af;
-  --accent-soft:   #eef4ff;
-  --accent-ring:   rgba(37, 99, 235, .18);
+  /* Acento único (azul, levemente mais vivo para brilhar no escuro) */
+  --accent:        #3b82f6;
+  --accent-dark:   #5b9bff;   /* hover: mais claro no modo escuro */
+  --accent-darker: #7db0ff;
+  --accent-soft:   rgba(59, 130, 246, .16);
+  --accent-ring:   rgba(59, 130, 246, .32);
 
-  /* Sidebar CLARA (texto escuro, legível) */
-  --sidebar-bg:          #ffffff;
-  --sidebar-text:        #5b6472;
-  --sidebar-text-strong: #1a2432;
-  --sidebar-hover:       #f2f5f9;
-  --sidebar-active-bg:   #eef4ff;
-  --sidebar-active-text: #1d4ed8;
-  --sidebar-section:     #99a1af;
+  /* Sidebar (um tom mais escura que a página) */
+  --sidebar-bg:          #0c121b;
+  --sidebar-text:        #8b97a8;
+  --sidebar-text-strong: #e6ebf2;
+  --sidebar-hover:       rgba(255, 255, 255, .05);
+  --sidebar-active-bg:   rgba(59, 130, 246, .16);
+  --sidebar-active-text: #7db0ff;
+  --sidebar-section:     #64708499;
 
-  /* Status (dessaturados, sistêmicos) */
-  --ok-bg:#e3f3ea; --ok-fg:#15794f;
-  --warn-bg:#fbedd8; --warn-fg:#9a6512;
-  --danger-bg:#fbe4e4; --danger-fg:#b1271f;
-  --info-bg:#e7effd; --info-fg:#2559c9;
-  --neutral-bg:#eceff4; --neutral-fg:#54607a;
+  /* Status (fundo translúcido escuro + texto claro) */
+  --ok-bg:rgba(34,197,94,.15);   --ok-fg:#5dd39e;
+  --warn-bg:rgba(234,179,8,.16); --warn-fg:#e9b949;
+  --danger-bg:rgba(239,68,68,.16); --danger-fg:#f4837f;
+  --info-bg:rgba(59,130,246,.16); --info-fg:#7fb0ff;
+  --neutral-bg:rgba(148,163,184,.15); --neutral-fg:#aeb8c8;
 
-  /* Fundo escuro só para tooltips */
-  --dark: #1e293b;
+  /* Fundo dos tooltips (mais escuro que os cartões) */
+  --dark: #05090f;
 
-  /* Cores do gráfico (seguem a paleta do sistema) */
-  --chart-comb:  #2563eb;
-  --chart-manut: #059669;
+  /* Cores do gráfico (mais vivas para contrastar no escuro) */
+  --chart-comb:  #3b82f6;
+  --chart-manut: #10b981;
 
   /* Raios firmes */
   --radius:    10px;
   --radius-sm: 8px;
   --radius-lg: 12px;
 
-  /* Sombras leves (tema limpo) */
-  --shadow:    0 1px 2px rgba(20, 30, 50, .04), 0 1px 1px rgba(20, 30, 50, .03);
-  --shadow-md: 0 2px 6px rgba(20, 30, 50, .06), 0 1px 2px rgba(20, 30, 50, .04);
-  --shadow-lg: 0 12px 32px rgba(20, 30, 50, .14);
+  /* Sombras (mais fortes para dar profundidade no escuro) */
+  --shadow:    0 1px 2px rgba(0, 0, 0, .35), 0 1px 1px rgba(0, 0, 0, .25);
+  --shadow-md: 0 2px 8px rgba(0, 0, 0, .40), 0 1px 2px rgba(0, 0, 0, .30);
+  --shadow-lg: 0 16px 40px rgba(0, 0, 0, .55);
 
   --font-body:    "Inter", -apple-system, "Segoe UI", Roboto, sans-serif;
   --font-display: "Plus Jakarta Sans", "Inter", -apple-system, "Segoe UI", sans-serif;
@@ -94,8 +94,8 @@ h1, h2, h3, h4, h5, .page-title, .sidebar-brand strong {
 
 /* Scrollbar sutil */
 ::-webkit-scrollbar { width: 10px; height: 10px; }
-::-webkit-scrollbar-thumb { background: #c6cdda; border-radius: 8px; border: 2px solid var(--bg); }
-::-webkit-scrollbar-thumb:hover { background: #aeb7c8; }
+::-webkit-scrollbar-thumb { background: #38465a; border-radius: 8px; border: 2px solid var(--bg); }
+::-webkit-scrollbar-thumb:hover { background: #47586f; }
 ::-webkit-scrollbar-track { background: transparent; }
 
 /* ===== Animações (contidas) ===== */
@@ -506,7 +506,7 @@ h1, h2, h3, h4, h5, .page-title, .sidebar-brand strong {
 /* Gráfico */
 .chart-wrap { position: relative; padding: 1rem 1.35rem 1.15rem; }
 .chart-svg { width: 100%; height: auto; display: block; }
-.chart-svg .grid-line { stroke: #edf0f6; stroke-width: 1; }
+.chart-svg .grid-line { stroke: #263243; stroke-width: 1; }
 .chart-svg .axis-line { stroke: var(--border-strong); stroke-width: 1; }
 .chart-svg .axis-label { fill: var(--muted); font-size: 11px; font-family: var(--font-mono); }
 .chart-svg .mes rect:not(.hit) { transition: opacity .18s var(--ease); }
