@@ -33,6 +33,9 @@ EM_PRODUCAO = os.environ.get("FLASK_DEBUG", "1") == "0"
 app.config["SESSION_COOKIE_HTTPONLY"] = True
 app.config["SESSION_COOKIE_SAMESITE"] = "Lax"
 app.config["SESSION_COOKIE_SECURE"] = EM_PRODUCAO
+# Desloga automaticamente após este tempo SEM uso (renovado a cada ação).
+app.config["PERMANENT_SESSION_LIFETIME"] = timedelta(hours=8)
+app.config["SESSION_REFRESH_EACH_REQUEST"] = True
 
 db.init_app(app)
 
@@ -124,6 +127,7 @@ def configurar():
             flash(str(erro), "danger")
             return render_template("configurar.html")
         session.clear()
+        session.permanent = True
         session["user_id"] = novo.id
         flash("Conta criada! Bem-vindo ao sistema.", "success")
         return redirect(url_for("index"))
@@ -143,6 +147,7 @@ def login():
         if conta and conta.conferir_senha(senha):
             csrf = session.get("_csrf")
             session.clear()
+            session.permanent = True
             if csrf:
                 session["_csrf"] = csrf
             session["user_id"] = conta.id
