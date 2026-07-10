@@ -171,15 +171,25 @@ h1, h2, h3, h4, h5, .page-title, .sidebar-brand strong {
   color: var(--sidebar-text);
   font-size: .9rem;
   font-weight: 500;
-  transition: background .15s var(--ease), color .15s var(--ease);
+  /* Transição mais longa e macia ao passar/selecionar as abas */
+  transition: background-color .28s var(--ease), color .28s var(--ease),
+              transform .28s var(--ease);
 }
-.sidebar-nav .nav-link i { font-size: 1.05rem; width: 20px; text-align: center; color: var(--muted-2); }
-.sidebar-nav .nav-link:hover { background: var(--sidebar-hover); color: var(--sidebar-text-strong); }
+.sidebar-nav .nav-link i {
+  font-size: 1.05rem; width: 20px; text-align: center; color: var(--muted-2);
+  transition: color .28s var(--ease);
+}
+.sidebar-nav .nav-link:hover {
+  background: var(--sidebar-hover);
+  color: var(--sidebar-text-strong);
+  transform: translateX(2px);   /* leve deslize suave no hover */
+}
 .sidebar-nav .nav-link:hover i { color: var(--muted); }
 .sidebar-nav .nav-link.active {
   background: var(--sidebar-active-bg);
   color: var(--sidebar-active-text);
   font-weight: 600;
+  animation: abaSuave .38s var(--ease) both;   /* fundo surge suavemente */
 }
 .sidebar-nav .nav-link.active i { color: var(--accent); }
 .sidebar-nav .nav-link.active::before {
@@ -190,6 +200,17 @@ h1, h2, h3, h4, h5, .page-title, .sidebar-brand strong {
   width: 3px; height: 22px;
   background: var(--accent);
   border-radius: 0 3px 3px 0;
+  transform-origin: center;
+  animation: barraSuave .42s var(--ease) both;  /* a barrinha cresce delicadamente */
+}
+
+@keyframes abaSuave {
+  from { background-color: transparent; }
+  to   { background-color: var(--sidebar-active-bg); }
+}
+@keyframes barraSuave {
+  from { opacity: 0; height: 0; }
+  to   { opacity: 1; height: 22px; }
 }
 
 .sidebar-footer {
