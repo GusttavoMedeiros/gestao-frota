@@ -61,6 +61,10 @@
   --font-display: "Plus Jakarta Sans", "Inter", -apple-system, "Segoe UI", sans-serif;
   --font-mono:    ui-monospace, "SF Mono", "Cascadia Code", "Roboto Mono", "Segoe UI Mono", "Consolas", monospace;
   --ease: cubic-bezier(.4, 0, .2, 1);
+
+  /* Avisa o navegador que o tema é escuro: calendário de datas,
+     menus de seleção e barras nativas ficam escuros também. */
+  color-scheme: dark;
 }
 
 html {
@@ -76,6 +80,11 @@ html {
 }
 
 body {
+  /* Realinha as variáveis internas do Bootstrap ao tema escuro
+     (senão modais, tabelas e campos continuam brancos por baixo). */
+  --bs-body-bg: var(--bg);
+  --bs-body-color: var(--text);
+  --bs-border-color: var(--border);
   background: var(--bg);
   color: var(--text);
   font-family: var(--font-body);
@@ -300,6 +309,7 @@ h1, h2, h3, h4, h5, .page-title, .sidebar-brand strong {
 /* ===== Tables ===== */
 .table-card { overflow: hidden; }
 .table-card .table { margin: 0; }
+.table { --bs-table-bg: transparent; --bs-table-color: var(--text-soft); }
 .table thead th {
   font-size: .74rem;
   font-weight: 600;
@@ -411,8 +421,8 @@ h1, h2, h3, h4, h5, .page-title, .sidebar-brand strong {
   line-height: 1;
 }
 .btn-ghost.btn-sm { width: 32px; height: 32px; }
-.btn-ghost:hover { background: var(--accent-soft); color: var(--accent-dark); border-color: #b9cdf6; }
-.btn-ghost.danger:hover { background: var(--danger-bg); color: var(--danger-fg); border-color: #f1c2c0; }
+.btn-ghost:hover { background: var(--accent-soft); color: var(--accent-dark); border-color: rgba(91, 155, 255, .45); }
+.btn-ghost.danger:hover { background: var(--danger-bg); color: var(--danger-fg); border-color: rgba(244, 131, 127, .45); }
 /* Forma que embrulha o botão de excluir na tabela também alinha */
 .table td form { display: inline-flex; vertical-align: middle; margin: 0; }
 
@@ -420,6 +430,7 @@ h1, h2, h3, h4, h5, .page-title, .sidebar-brand strong {
 .form-card { max-width: 720px; padding: 1.85rem 2rem; }
 .form-label { font-size: .84rem; font-weight: 600; color: var(--text-soft); margin-bottom: .35rem; }
 .form-control, .form-select {
+  background-color: #131c28;   /* campo escuro (o Bootstrap deixava branco) */
   border-color: var(--border-strong);
   border-radius: var(--radius-sm);
   font-size: .92rem;
@@ -429,10 +440,26 @@ h1, h2, h3, h4, h5, .page-title, .sidebar-brand strong {
 }
 .form-control:hover, .form-select:hover { border-color: var(--muted-2); }
 .form-control:focus, .form-select:focus {
+  background-color: #131c28;
+  color: var(--text);
   border-color: var(--accent);
   box-shadow: 0 0 0 4px var(--accent-ring);
 }
 .form-control::placeholder { color: var(--muted-2); }
+
+/* Setinha do select em tom claro (a do Bootstrap é escura e sumia) */
+.form-select {
+  background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3e%3cpath fill='none' stroke='%23aeb8c8' stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='m2 5 6 6 6-6'/%3e%3c/svg%3e");
+}
+
+/* Preenchimento automático do Chrome pintava o campo de branco */
+input:-webkit-autofill,
+input:-webkit-autofill:hover,
+input:-webkit-autofill:focus {
+  -webkit-box-shadow: 0 0 0 1000px #131c28 inset;
+  -webkit-text-fill-color: var(--text);
+  caret-color: var(--text);
+}
 .form-hint { font-size: .79rem; color: var(--muted); margin-top: .3rem; }
 .req { color: var(--danger-fg); font-weight: 700; }
 
@@ -453,7 +480,9 @@ h1, h2, h3, h4, h5, .page-title, .sidebar-brand strong {
 
 /* ===== Empty state ===== */
 .empty-state { text-align: center; padding: 3.75rem 1.5rem; color: var(--muted); }
-.empty-state i { font-size: 2.4rem; display: block; margin-bottom: .9rem; color: var(--muted-2); }
+.empty-state > i { font-size: 2.4rem; display: block; margin-bottom: .9rem; color: var(--muted-2); }
+/* O ícone DENTRO do botão do estado vazio volta ao normal */
+.empty-state .btn i { font-size: inherit; display: inline; margin: 0; color: inherit; }
 .empty-state p { margin-bottom: 1.15rem; font-size: .92rem; }
 
 /* ===== Alerts / flash ===== */
@@ -469,10 +498,15 @@ h1, h2, h3, h4, h5, .page-title, .sidebar-brand strong {
 
 /* ===== Modais ===== */
 .modal-content {
+  background: var(--surface);
+  color: var(--text-soft);
   border: 1px solid var(--border);
   border-radius: var(--radius-lg);
   box-shadow: var(--shadow-lg);
 }
+
+/* "X" de fechar avisos: o do Bootstrap é preto e sumia no escuro */
+.btn-close { filter: invert(1) grayscale(100%) brightness(1.4); }
 .modal-header { border-bottom: 1px solid var(--border); padding: 1.15rem 1.4rem; }
 .modal-title { font-family: var(--font-display); font-weight: 700; font-size: 1.1rem; }
 .modal-body { padding: 1.25rem 1.4rem; color: var(--text-soft); }
@@ -500,7 +534,7 @@ h1, h2, h3, h4, h5, .page-title, .sidebar-brand strong {
   border-radius: var(--radius-sm);
   transition: background .15s var(--ease), color .15s var(--ease), border-color .15s var(--ease);
 }
-.atalho:hover { background: var(--accent-soft); color: var(--accent-dark); border-color: #b9cdf6; }
+.atalho:hover { background: var(--accent-soft); color: var(--accent-dark); border-color: rgba(91, 155, 255, .45); }
 .atalho.ativo { background: var(--accent); color: #fff; border-color: var(--accent); }
 
 /* Gráfico */
@@ -695,7 +729,7 @@ h1, h2, h3, h4, h5, .page-title, .sidebar-brand strong {
   flex-shrink: 0;
   transition: background .15s var(--ease), color .15s var(--ease), border-color .15s var(--ease);
 }
-.btn-logout:hover { background: var(--danger-bg); color: var(--danger-fg); border-color: #f1c2c0; }
+.btn-logout:hover { background: var(--danger-bg); color: var(--danger-fg); border-color: rgba(244, 131, 127, .45); }
 
 /* ===== List (alertas do painel) ===== */
 .alert-list .list-group-item {
