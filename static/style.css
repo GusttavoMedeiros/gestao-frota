@@ -101,11 +101,18 @@ h1, h2, h3, h4, h5, .page-title, .sidebar-brand strong {
 /* Números alinhados/monoespaçados */
 .stat-value, .table td.text-end, .chart-svg .axis-label { font-variant-numeric: tabular-nums; }
 
-/* Scrollbar sutil */
+/* Scrollbar sutil (no computador) */
 ::-webkit-scrollbar { width: 10px; height: 10px; }
 ::-webkit-scrollbar-thumb { background: #38465a; border-radius: 8px; border: 2px solid var(--bg); }
 ::-webkit-scrollbar-thumb:hover { background: #47586f; }
 ::-webkit-scrollbar-track { background: transparent; }
+
+/* Em telas de toque (celular/tablet), esconde a barra — o próprio
+   sistema mostra um indicador que some sozinho, como nos apps. */
+@media (hover: none) and (pointer: coarse) {
+  ::-webkit-scrollbar { width: 0; height: 0; }
+  * { scrollbar-width: none; -ms-overflow-style: none; }
+}
 
 /* ===== Animações (contidas) ===== */
 @keyframes fadeUp {
