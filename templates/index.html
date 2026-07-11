@@ -49,11 +49,11 @@
 
 {% if alertas %}
 <div class="card mb-4">
-  <div class="card-header-flat"><i class="bi bi-bell-fill text-warning"></i> Manutenções a vencer</div>
+  <div class="card-header-flat"><i class="bi bi-bell-fill text-warning"></i> Alertas e vencimentos</div>
   <ul class="list-group list-group-flush alert-list">
     {% for a in alertas %}
     <li class="list-group-item">
-      <div><strong>{{ a.veiculo.placa }}</strong> <span class="cell-muted">· {{ a.tipo }}</span></div>
+      <div><strong>{{ a.titulo }}</strong> <span class="cell-muted">· {{ a.tipo }}</span></div>
       <span class="badge-soft badge-soft-{{ a.nivel }}">{{ a.texto }}</span>
     </li>
     {% endfor %}

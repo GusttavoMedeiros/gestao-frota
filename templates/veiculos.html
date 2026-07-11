@@ -15,7 +15,7 @@
     <table class="table table-mobile">
       <thead>
         <tr>
-          <th>Placa</th><th>Veículo</th><th>Ano</th><th class="text-end">Quilometragem</th><th>Status</th><th class="text-end">Ações</th>
+          <th>Placa</th><th>Veículo</th><th>Ano</th><th class="text-end">Quilometragem</th><th>Status</th><th>Licenciamento</th><th>Seguro</th><th class="text-end">Ações</th>
         </tr>
       </thead>
       <tbody>
@@ -29,6 +29,16 @@
             {% if v.status == 'ativo' %}<span class="badge-soft badge-soft-success">Ativo</span>
             {% elif v.status == 'manutencao' %}<span class="badge-soft badge-soft-warning">Manutenção</span>
             {% else %}<span class="badge-soft badge-soft-secondary">Inativo</span>{% endif %}
+          </td>
+          <td data-label="Licenciamento">
+            {% if v.venc_licenciamento %}{% set b = v.venc_licenciamento|venc_badge %}
+              {% if b %}<span class="badge-soft badge-soft-{{ b }}">{{ v.venc_licenciamento|data_br }}</span>{% else %}{{ v.venc_licenciamento|data_br }}{% endif %}
+            {% else %}<span class="cell-muted">—</span>{% endif %}
+          </td>
+          <td data-label="Seguro">
+            {% if v.venc_seguro %}{% set b = v.venc_seguro|venc_badge %}
+              {% if b %}<span class="badge-soft badge-soft-{{ b }}">{{ v.venc_seguro|data_br }}</span>{% else %}{{ v.venc_seguro|data_br }}{% endif %}
+            {% else %}<span class="cell-muted">—</span>{% endif %}
           </td>
           <td class="text-end text-nowrap">
             <a href="{{ url_for('editar_veiculo', veiculo_id=v.id) }}" class="btn btn-sm btn-ghost" title="Editar"><i class="bi bi-pencil"></i></a>

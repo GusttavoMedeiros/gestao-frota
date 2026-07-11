@@ -31,6 +31,11 @@
       <label class="form-label">Telefone</label>
       <input type="text" name="telefone" class="form-control" value="{{ f.get('telefone', (motorista.telefone or '') if motorista else '') }}" placeholder="(00) 00000-0000" maxlength="20">
     </div>
+    <div class="col-md-6">
+      <label class="form-label">Validade da CNH</label>
+      <input type="date" name="validade_cnh" class="form-control" value="{{ f.get('validade_cnh', motorista.validade_cnh.isoformat() if motorista and motorista.validade_cnh else '') }}">
+      <div class="form-hint"><i class="bi bi-bell me-1"></i>Gera alerta no painel quando estiver perto de vencer.</div>
+    </div>
     <div class="col-12">
       <label class="form-label">Veículo vinculado</label>
       {% set vsel = f.get('veiculo_id', (motorista.veiculo_id|string) if motorista and motorista.veiculo_id else '') %}

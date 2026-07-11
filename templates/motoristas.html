@@ -14,7 +14,7 @@
   <div class="table-responsive">
     <table class="table table-mobile">
       <thead>
-        <tr><th>Nome</th><th>CNH</th><th>Categoria</th><th>Telefone</th><th>Veículo vinculado</th><th class="text-end">Ações</th></tr>
+        <tr><th>Nome</th><th>CNH</th><th>Categoria</th><th>Validade CNH</th><th>Telefone</th><th>Veículo vinculado</th><th class="text-end">Ações</th></tr>
       </thead>
       <tbody>
         {% for m in motoristas %}
@@ -22,6 +22,11 @@
           <td class="cell-strong" data-label="Nome">{{ m.nome }}</td>
           <td class="cell-muted" data-label="CNH">{{ m.cnh }}</td>
           <td data-label="Categoria"><span class="badge-soft badge-soft-info">{{ m.categoria_cnh }}</span></td>
+          <td data-label="Validade CNH">
+            {% if m.validade_cnh %}{% set b = m.validade_cnh|venc_badge %}
+              {% if b %}<span class="badge-soft badge-soft-{{ b }}">{{ m.validade_cnh|data_br }}</span>{% else %}{{ m.validade_cnh|data_br }}{% endif %}
+            {% else %}<span class="cell-muted">—</span>{% endif %}
+          </td>
           <td class="cell-muted" data-label="Telefone">{{ m.telefone or "—" }}</td>
           <td data-label="Veículo vinculado">{{ m.veiculo.placa if m.veiculo else "—" }}</td>
           <td class="text-end text-nowrap">

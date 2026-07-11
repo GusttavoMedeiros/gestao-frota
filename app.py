@@ -9,7 +9,7 @@ from datetime import date, datetime, timedelta
 
 from flask import (Flask, Response, flash, redirect, render_template, request,
                    session, url_for)
-from sqlalchemy import func
+from sqlalchemy import func, inspect, text
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import joinedload
 
@@ -39,8 +39,29 @@ app.config["SESSION_REFRESH_EACH_REQUEST"] = True
 
 db.init_app(app)
 
+
+def garantir_colunas():
+    """Adiciona colunas novas a bancos que já existem, sem apagar dados.
+    (db.create_all só cria tabelas que faltam, não colunas novas.)"""
+    novas = {
+        "veiculo": {"venc_licenciamento": "DATE", "venc_seguro": "DATE"},
+        "motorista": {"validade_cnh": "DATE"},
+    }
+    inspetor = inspect(db.engine)
+    tabelas = inspetor.get_table_names()
+    for tabela, colunas in novas.items():
+        if tabela not in tabelas:
+            continue
+        existentes = {c["name"] for c in inspetor.get_columns(tabela)}
+        for nome, tipo in colunas.items():
+            if nome not in existentes:
+                db.session.execute(text(f"ALTER TABLE {tabela} ADD COLUMN {nome} {tipo}"))
+    db.session.commit()
+
+
 with app.app_context():
     db.create_all()
+    garantir_colunas()
 
 
 # ---------------- Proteção CSRF ----------------
@@ -206,6 +227,19 @@ def formato_compacto(valor):
     return formato_milhar(int(valor))
 
 
+@app.template_filter("venc_badge")
+def venc_badge(data):
+    """Cor da data de vencimento: 'danger' se vencida, 'warning' se em até 30 dias."""
+    if not data:
+        return ""
+    dias = (data - date.today()).days
+    if dias < 0:
+        return "danger"
+    if dias <= 30:
+        return "warning"
+    return ""
+
+
 # ---------------- Leitura e validação de formulários ----------------
 
 class ErroFormulario(Exception):
@@ -298,13 +332,26 @@ def veiculos_ordenados():
 
 # ---------------- Painel ----------------
 
-def montar_alertas():
-    """Alertas gerados apenas pela manutenção MAIS RECENTE de cada tipo por veículo.
+def alerta_por_data(hoje, venc, dias_aviso=30):
+    """(nivel, texto) se a data está vencida ou perto de vencer; senão None.
+    Texto neutro em gênero ('venceu'/'vence') para servir a CNH, seguro, etc."""
+    if not venc:
+        return None
+    dias = (venc - hoje).days
+    if dias < 0:
+        return "danger", f"venceu há {-dias} dia(s)"
+    if dias <= dias_aviso:
+        return "warning", "vence hoje" if dias == 0 else f"vence em {dias} dia(s)"
+    return None
 
-    Assim, ao registrar uma nova manutenção do mesmo tipo, o alerta antigo
-    se resolve sozinho. Veículos inativos não geram alertas.
-    """
+
+def montar_alertas():
+    """Reúne os avisos do painel: manutenções previstas, documentos dos
+    veículos (licenciamento/seguro) e CNH dos motoristas. Veículos inativos
+    não geram alertas; a manutenção usa só a mais recente de cada tipo."""
     hoje = date.today()
+    alertas = []
+
     manutencoes = (
         Manutencao.query.options(joinedload(Manutencao.veiculo))
         .order_by(Manutencao.data, Manutencao.id).all()
@@ -312,27 +359,35 @@ def montar_alertas():
     ultimas = {}
     for m in manutencoes:
         ultimas[(m.veiculo_id, m.tipo.strip().lower())] = m
-
-    alertas = []
     for m in ultimas.values():
         if m.veiculo.status == "inativo":
             continue
-        if m.proxima_data:
-            dias = (m.proxima_data - hoje).days
-            if dias < 0:
-                alertas.append({"veiculo": m.veiculo, "tipo": m.tipo, "nivel": "danger",
-                                "texto": f"vencida há {-dias} dia(s)"})
-            elif dias <= 30:
-                alertas.append({"veiculo": m.veiculo, "tipo": m.tipo, "nivel": "warning",
-                                "texto": f"vence em {dias} dia(s)"})
+        resultado = alerta_por_data(hoje, m.proxima_data)
+        if resultado:
+            alertas.append({"titulo": m.veiculo.placa, "tipo": m.tipo,
+                            "nivel": resultado[0], "texto": resultado[1]})
         if m.proxima_km:
             faltam = m.proxima_km - m.veiculo.quilometragem
             if faltam <= 0:
-                alertas.append({"veiculo": m.veiculo, "tipo": m.tipo, "nivel": "danger",
+                alertas.append({"titulo": m.veiculo.placa, "tipo": m.tipo, "nivel": "danger",
                                 "texto": "quilometragem prevista atingida"})
             elif faltam <= 1000:
-                alertas.append({"veiculo": m.veiculo, "tipo": m.tipo, "nivel": "warning",
+                alertas.append({"titulo": m.veiculo.placa, "tipo": m.tipo, "nivel": "warning",
                                 "texto": f"faltam {formato_milhar(faltam)} km"})
+
+    for v in Veiculo.query.filter(Veiculo.status != "inativo").all():
+        for venc, rotulo in ((v.venc_licenciamento, "Licenciamento"), (v.venc_seguro, "Seguro")):
+            resultado = alerta_por_data(hoje, venc)
+            if resultado:
+                alertas.append({"titulo": v.placa, "tipo": rotulo,
+                                "nivel": resultado[0], "texto": resultado[1]})
+
+    for mot in Motorista.query.all():
+        resultado = alerta_por_data(hoje, mot.validade_cnh)
+        if resultado:
+            alertas.append({"titulo": mot.nome, "tipo": "CNH",
+                            "nivel": resultado[0], "texto": resultado[1]})
+
     ordem = {"danger": 0, "warning": 1}
     alertas.sort(key=lambda a: ordem[a["nivel"]])
     return alertas
@@ -393,6 +448,8 @@ def preencher_veiculo(veiculo):
     if status not in ("ativo", "manutencao", "inativo"):
         raise ErroFormulario("Status inválido.")
     veiculo.status = status
+    veiculo.venc_licenciamento = ler_data("venc_licenciamento", "Vencimento do licenciamento", obrigatorio=False)
+    veiculo.venc_seguro = ler_data("venc_seguro", "Vencimento do seguro", obrigatorio=False)
 
 
 @app.route("/veiculos/novo", methods=["GET", "POST"])
@@ -461,6 +518,7 @@ def preencher_motorista(motorista):
     motorista.cnh = exigir_texto("cnh", "CNH", 20)
     motorista.categoria_cnh = exigir_texto("categoria_cnh", "Categoria", 5).upper()
     motorista.telefone = request.form.get("telefone", "").strip()
+    motorista.validade_cnh = ler_data("validade_cnh", "Validade da CNH", obrigatorio=False)
     bruto = request.form.get("veiculo_id") or None
     if bruto:
         if not bruto.isdigit() or db.session.get(Veiculo, int(bruto)) is None:

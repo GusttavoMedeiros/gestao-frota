@@ -28,6 +28,8 @@ class Veiculo(db.Model):
     ano = db.Column(db.Integer, nullable=False)
     quilometragem = db.Column(db.Integer, nullable=False, default=0)
     status = db.Column(db.String(20), nullable=False, default="ativo")
+    venc_licenciamento = db.Column(db.Date, nullable=True)  # licenciamento/IPVA
+    venc_seguro = db.Column(db.Date, nullable=True)
 
     motoristas = db.relationship("Motorista", backref="veiculo", lazy=True)
     manutencoes = db.relationship("Manutencao", backref="veiculo", lazy=True, cascade="all, delete-orphan")
@@ -43,6 +45,7 @@ class Motorista(db.Model):
     cnh = db.Column(db.String(20), nullable=False)
     categoria_cnh = db.Column(db.String(5), nullable=False)
     telefone = db.Column(db.String(20))
+    validade_cnh = db.Column(db.Date, nullable=True)
     veiculo_id = db.Column(db.Integer, db.ForeignKey("veiculo.id"), nullable=True)
 
     abastecimentos = db.relationship("Abastecimento", backref="motorista", lazy=True)
