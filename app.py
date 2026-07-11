@@ -397,20 +397,29 @@ def montar_alertas():
 def index():
     hoje = date.today()
     inicio_mes = hoje.replace(day=1)
-    custo_manutencao = (
-        db.session.query(func.coalesce(func.sum(Manutencao.custo), 0))
-        .filter(Manutencao.data >= inicio_mes).scalar()
-    )
-    custo_combustivel = (
-        db.session.query(func.coalesce(func.sum(Abastecimento.valor_total), 0))
-        .filter(Abastecimento.data >= inicio_mes).scalar()
-    )
+    inicio_mes_ant = (inicio_mes - timedelta(days=1)).replace(day=1)
+
+    def soma_custos(desde, ate=None):
+        manut = Manutencao.query.filter(Manutencao.data >= desde)
+        comb = Abastecimento.query.filter(Abastecimento.data >= desde)
+        if ate is not None:
+            manut = manut.filter(Manutencao.data < ate)
+            comb = comb.filter(Abastecimento.data < ate)
+        m = manut.with_entities(func.coalesce(func.sum(Manutencao.custo), 0)).scalar()
+        c = comb.with_entities(func.coalesce(func.sum(Abastecimento.valor_total), 0)).scalar()
+        return m + c
+
+    custo_mes = soma_custos(inicio_mes)
+    custo_mes_ant = soma_custos(inicio_mes_ant, inicio_mes)
+    variacao = round((custo_mes - custo_mes_ant) / custo_mes_ant * 100) if custo_mes_ant > 0 else None
+
     stats = {
         "total_veiculos": Veiculo.query.count(),
         "veiculos_ativos": Veiculo.query.filter_by(status="ativo").count(),
         "veiculos_manutencao": Veiculo.query.filter_by(status="manutencao").count(),
         "total_motoristas": Motorista.query.count(),
-        "custo_mes": custo_manutencao + custo_combustivel,
+        "custo_mes": custo_mes,
+        "custo_variacao": variacao,
     }
     ultimas_manutencoes = (
         Manutencao.query.options(joinedload(Manutencao.veiculo))

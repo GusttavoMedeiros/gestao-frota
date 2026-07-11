@@ -42,6 +42,15 @@
       <div>
         <div class="stat-label">Custos do mês</div>
         <div class="stat-value">{{ stats.custo_mes|brl }}</div>
+        {% if stats.custo_variacao is not none %}
+          {% if stats.custo_variacao > 0 %}
+          <div class="stat-trend up"><i class="bi bi-arrow-up-right"></i> {{ stats.custo_variacao }}% vs. mês anterior</div>
+          {% elif stats.custo_variacao < 0 %}
+          <div class="stat-trend down"><i class="bi bi-arrow-down-right"></i> {{ -stats.custo_variacao }}% vs. mês anterior</div>
+          {% else %}
+          <div class="stat-trend flat">igual ao mês anterior</div>
+          {% endif %}
+        {% endif %}
       </div>
     </div>
   </div>

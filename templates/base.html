@@ -154,6 +154,72 @@ document.addEventListener('DOMContentLoaded', function () {
   });
 });
 </script>
+<script>
+// Ordenar tabelas clicando no cabeçalho (datas, valores, km, texto)
+document.addEventListener('DOMContentLoaded', function () {
+  function texto(td) { return (td ? td.textContent : '').trim(); }
+  function vazio(s) { return s === '' || s === '—'; }
+  function paraData(s) {
+    var m = s.match(/^(\d{2})\/(\d{2})\/(\d{4})$/);
+    return m ? new Date(+m[3], +m[2] - 1, +m[1]).getTime() : null;
+  }
+  function paraNumero(s) {
+    var t = s.replace(/\b(km|L|un)\b/gi, '').replace(/R\$/g, '').trim();
+    if (/[a-zA-Z]/.test(t)) return null;              // tem letra: não é número
+    t = t.replace(/\./g, '').replace(',', '.').replace(/[^\d.\-]/g, '');
+    if (t === '' || t === '-' || t === '.') return null;
+    var n = parseFloat(t);
+    return isNaN(n) ? null : n;
+  }
+  function tipoColuna(celulas) {
+    var cheias = celulas.map(texto).filter(function (s) { return !vazio(s); });
+    if (cheias.length && cheias.every(function (s) { return paraData(s) !== null; })) return 'data';
+    if (cheias.length && cheias.every(function (s) { return paraNumero(s) !== null; })) return 'num';
+    return 'texto';
+  }
+
+  document.querySelectorAll('table.table').forEach(function (tabela) {
+    var corpo = tabela.querySelector('tbody');
+    var cabecalhos = Array.prototype.slice.call(tabela.querySelectorAll('thead th'));
+    if (!corpo || !cabecalhos.length) return;
+
+    cabecalhos.forEach(function (th, col) {
+      if (th.textContent.trim() === 'Ações') return;   // coluna de botões não ordena
+      th.classList.add('sortable');
+      th.addEventListener('click', function () {
+        var linhas = Array.prototype.slice.call(corpo.querySelectorAll('tr'));
+        var celulas = linhas.map(function (tr) { return tr.children[col]; });
+        var tipo = tipoColuna(celulas);
+        var asc = th.dataset.sortDir !== 'asc';
+
+        cabecalhos.forEach(function (h) {
+          h.dataset.sortDir = '';
+          var ind = h.querySelector('.sort-ind');
+          if (ind) ind.remove();
+        });
+        th.dataset.sortDir = asc ? 'asc' : 'desc';
+        var seta = document.createElement('span');
+        seta.className = 'sort-ind';
+        seta.textContent = asc ? '▲' : '▼';
+        th.appendChild(seta);
+
+        linhas.sort(function (a, b) {
+          var sa = texto(a.children[col]), sb = texto(b.children[col]);
+          var ea = vazio(sa), eb = vazio(sb);
+          if (ea && eb) return 0;
+          if (ea) return 1;                 // vazios sempre por último
+          if (eb) return -1;
+          var r;
+          if (tipo === 'texto') r = sa.localeCompare(sb, 'pt', { numeric: true, sensitivity: 'base' });
+          else r = (tipo === 'data' ? paraData(sa) - paraData(sb) : paraNumero(sa) - paraNumero(sb));
+          return asc ? r : -r;
+        });
+        linhas.forEach(function (tr) { corpo.appendChild(tr); });
+      });
+    });
+  });
+});
+</script>
 {% block scripts %}{% endblock %}
 </body>
 </html>
