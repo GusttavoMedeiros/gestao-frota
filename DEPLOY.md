@@ -62,6 +62,7 @@ endereço próprio e HTTPS (cadeado), para usar como app no celular de qualquer 
 
    os.environ['SECRET_KEY'] = 'COLE_A_CHAVE_GERADA_AQUI'
    os.environ['FLASK_DEBUG'] = '0'
+   os.environ['ALLOWED_ORIGINS'] = 'https://kg-frota.vercel.app'
 
    from app import app as application
    ```
@@ -103,6 +104,10 @@ git pull
 
 Depois, na aba **Web**, clique em **Reload**. Seus dados (banco `frota.db`) **não são
 apagados** — ele fica de fora do Git de propósito.
+
+O frontend novo usa a API em `/api`. Depois de atualizar, confirme que
+`https://SEU_USUARIO.pythonanywhere.com/api/dados` responde `401` sem login;
+isso indica que a API está ativa e protegida.
 
 ## Observações
 
