@@ -5,4 +5,5 @@ venv/
 frota.db
 .env
 instance/
+uploads/
 .claude/settings.local.json

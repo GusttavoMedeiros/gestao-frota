@@ -14,6 +14,7 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import joinedload
 
 from models import Abastecimento, Manutencao, Motorista, Usuario, Veiculo, db
+from api import api, configurar_api
 
 app = Flask(__name__)
 
@@ -38,14 +39,29 @@ app.config["PERMANENT_SESSION_LIFETIME"] = timedelta(hours=8)
 app.config["SESSION_REFRESH_EACH_REQUEST"] = True
 
 db.init_app(app)
+app.register_blueprint(api)
+configurar_api(app)
 
 
 def garantir_colunas():
     """Adiciona colunas novas a bancos que já existem, sem apagar dados.
     (db.create_all só cria tabelas que faltam, não colunas novas.)"""
     novas = {
-        "veiculo": {"venc_licenciamento": "DATE", "venc_seguro": "DATE"},
-        "motorista": {"validade_cnh": "DATE"},
+        "veiculo": {
+            "venc_licenciamento": "DATE", "venc_seguro": "DATE",
+            "tipo": "VARCHAR(20) NOT NULL DEFAULT 'caminhao'",
+            "renavam": "VARCHAR(30)", "chassi": "VARCHAR(50)",
+        },
+        "motorista": {
+            "validade_cnh": "DATE",
+            "status": "VARCHAR(20) NOT NULL DEFAULT 'ativo'",
+        },
+        "manutencao": {
+            "categoria": "VARCHAR(50) NOT NULL DEFAULT 'outros'",
+            "oficina": "VARCHAR(100)",
+            "status": "VARCHAR(20) NOT NULL DEFAULT 'concluida'",
+        },
+        "abastecimento": {"posto": "VARCHAR(100)", "observacao": "TEXT"},
     }
     inspetor = inspect(db.engine)
     tabelas = inspetor.get_table_names()
@@ -86,6 +102,8 @@ def redireciona_local(padrao="index"):
 
 @app.before_request
 def proteger_csrf():
+    if request.path.startswith("/api/"):
+        return
     if request.method == "POST":
         token = session.get("_csrf")
         if not token or token != request.form.get("_csrf"):
@@ -110,6 +128,8 @@ ENDPOINTS_PUBLICOS = {"login", "logout", "configurar", "service_worker", "static
 
 @app.before_request
 def exigir_login():
+    if request.path.startswith("/api/"):
+        return
     if request.endpoint in ENDPOINTS_PUBLICOS:
         return
     if "user_id" in session:

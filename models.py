@@ -26,14 +26,19 @@ class Veiculo(db.Model):
     marca = db.Column(db.String(50), nullable=False)
     modelo = db.Column(db.String(50), nullable=False)
     ano = db.Column(db.Integer, nullable=False)
+    tipo = db.Column(db.String(20), nullable=False, default="caminhao")
     quilometragem = db.Column(db.Integer, nullable=False, default=0)
     status = db.Column(db.String(20), nullable=False, default="ativo")
+    renavam = db.Column(db.String(30))
+    chassi = db.Column(db.String(50))
     venc_licenciamento = db.Column(db.Date, nullable=True)  # licenciamento/IPVA
     venc_seguro = db.Column(db.Date, nullable=True)
 
     motoristas = db.relationship("Motorista", backref="veiculo", lazy=True)
     manutencoes = db.relationship("Manutencao", backref="veiculo", lazy=True, cascade="all, delete-orphan")
     abastecimentos = db.relationship("Abastecimento", backref="veiculo", lazy=True, cascade="all, delete-orphan")
+    despesas = db.relationship("Despesa", backref="veiculo", lazy=True, cascade="all, delete-orphan")
+    documentos = db.relationship("Documento", backref="veiculo", lazy=True, cascade="all, delete-orphan")
 
     def __repr__(self):
         return f"<Veiculo {self.placa}>"
@@ -46,9 +51,11 @@ class Motorista(db.Model):
     categoria_cnh = db.Column(db.String(5), nullable=False)
     telefone = db.Column(db.String(20))
     validade_cnh = db.Column(db.Date, nullable=True)
+    status = db.Column(db.String(20), nullable=False, default="ativo")
     veiculo_id = db.Column(db.Integer, db.ForeignKey("veiculo.id"), nullable=True)
 
     abastecimentos = db.relationship("Abastecimento", backref="motorista", lazy=True)
+    documentos = db.relationship("Documento", backref="motorista", lazy=True, cascade="all, delete-orphan")
 
     def __repr__(self):
         return f"<Motorista {self.nome}>"
@@ -58,10 +65,13 @@ class Manutencao(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     veiculo_id = db.Column(db.Integer, db.ForeignKey("veiculo.id"), nullable=False)
     tipo = db.Column(db.String(50), nullable=False)
+    categoria = db.Column(db.String(50), nullable=False, default="outros")
     data = db.Column(db.Date, nullable=False)
     quilometragem = db.Column(db.Integer, nullable=False)
     custo = db.Column(db.Float, nullable=False, default=0)
     descricao = db.Column(db.Text)
+    oficina = db.Column(db.String(100))
+    status = db.Column(db.String(20), nullable=False, default="concluida")
     proxima_data = db.Column(db.Date, nullable=True)
     proxima_km = db.Column(db.Integer, nullable=True)
 
@@ -78,6 +88,35 @@ class Abastecimento(db.Model):
     litros = db.Column(db.Float, nullable=False)
     valor_total = db.Column(db.Float, nullable=False)
     quilometragem = db.Column(db.Integer, nullable=False)
+    posto = db.Column(db.String(100))
+    observacao = db.Column(db.Text)
 
     def __repr__(self):
         return f"<Abastecimento veiculo {self.veiculo_id} em {self.data}>"
+
+
+class Despesa(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    veiculo_id = db.Column(db.Integer, db.ForeignKey("veiculo.id"), nullable=True)
+    categoria = db.Column(db.String(30), nullable=False)
+    descricao = db.Column(db.String(255), nullable=False)
+    data = db.Column(db.Date, nullable=False)
+    valor = db.Column(db.Float, nullable=False, default=0)
+    vencimento = db.Column(db.Date)
+    status = db.Column(db.String(20), nullable=False, default="pendente")
+
+
+class Documento(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    veiculo_id = db.Column(db.Integer, db.ForeignKey("veiculo.id"), nullable=True)
+    motorista_id = db.Column(db.Integer, db.ForeignKey("motorista.id"), nullable=True)
+    tipo = db.Column(db.String(30), nullable=False)
+    descricao = db.Column(db.String(255))
+    validade = db.Column(db.Date)
+    arquivo_path = db.Column(db.String(255))
+
+
+class Configuracao(db.Model):
+    id = db.Column(db.Integer, primary_key=True, default=1)
+    dias_aviso_vencimento = db.Column(db.Integer, nullable=False, default=30)
+    km_aviso_manutencao = db.Column(db.Integer, nullable=False, default=1000)
