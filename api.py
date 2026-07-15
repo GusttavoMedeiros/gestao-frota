@@ -27,7 +27,7 @@ def configurar_api(app):
         permitidas = {
             origem.strip() for origem in os.environ.get(
                 "ALLOWED_ORIGINS",
-                "https://kg-frota.vercel.app,http://127.0.0.1:5173",
+                "http://127.0.0.1:5173",
             ).split(",") if origem.strip()
         }
         origem = request.headers.get("Origin")
