@@ -8,7 +8,7 @@ import time
 from datetime import date, datetime, timedelta
 
 from flask import (Flask, Response, flash, redirect, render_template, request,
-                   session, url_for)
+                   send_from_directory, session, url_for)
 from sqlalchemy import func, inspect, text
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import joinedload
@@ -21,6 +21,7 @@ app = Flask(__name__)
 # Banco: usa DATABASE_URL se definida; senão, um arquivo SQLite na pasta do
 # projeto (caminho absoluto, para não depender de onde o app foi iniciado).
 BASE_DIR = os.path.abspath(os.path.dirname(__file__))
+FRONTEND_DIR = os.path.join(BASE_DIR, "frontend")
 app.config["SQLALCHEMY_DATABASE_URI"] = (
     os.environ.get("DATABASE_URL") or "sqlite:///" + os.path.join(BASE_DIR, "frota.db")
 )
@@ -123,7 +124,11 @@ def cabecalhos_de_seguranca(resposta):
 
 # Endpoints acessíveis sem login (a própria tela de login, o primeiro acesso,
 # arquivos estáticos e o service worker do PWA).
-ENDPOINTS_PUBLICOS = {"login", "logout", "configurar", "service_worker", "static"}
+ENDPOINTS_PUBLICOS = {
+    "login", "logout", "configurar", "frontend", "frontend_asset",
+    "frontend_icon", "frontend_manifest", "frontend_workbox",
+    "service_worker", "static",
+}
 
 
 @app.before_request
@@ -208,11 +213,41 @@ def logout():
 
 @app.route("/sw.js")
 def service_worker():
-    resposta = app.send_static_file("sw.js")
+    resposta = send_from_directory(FRONTEND_DIR, "sw.js")
     resposta.headers["Content-Type"] = "application/javascript"
     resposta.headers["Service-Worker-Allowed"] = "/"
     resposta.headers["Cache-Control"] = "no-cache"
     return resposta
+
+
+@app.route("/")
+@app.route("/index.html")
+def frontend():
+    resposta = send_from_directory(FRONTEND_DIR, "index.html")
+    resposta.headers["Cache-Control"] = "no-cache"
+    return resposta
+
+
+@app.route("/assets/<path:arquivo>")
+def frontend_asset(arquivo):
+    resposta = send_from_directory(os.path.join(FRONTEND_DIR, "assets"), arquivo)
+    resposta.headers["Cache-Control"] = "public, max-age=31536000, immutable"
+    return resposta
+
+
+@app.route("/icons/<path:arquivo>")
+def frontend_icon(arquivo):
+    return send_from_directory(os.path.join(FRONTEND_DIR, "icons"), arquivo)
+
+
+@app.route("/manifest.webmanifest")
+def frontend_manifest():
+    return send_from_directory(FRONTEND_DIR, "manifest.webmanifest")
+
+
+@app.route("/workbox-<path:arquivo>.js")
+def frontend_workbox(arquivo):
+    return send_from_directory(FRONTEND_DIR, f"workbox-{arquivo}.js")
 
 
 # ---------------- Filtros de formatação ----------------
@@ -413,7 +448,7 @@ def montar_alertas():
     return alertas
 
 
-@app.route("/")
+@app.route("/legacy")
 def index():
     hoje = date.today()
     inicio_mes = hoje.replace(day=1)

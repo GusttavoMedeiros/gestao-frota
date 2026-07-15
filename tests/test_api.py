@@ -1,4 +1,5 @@
 import os
+import re
 import shutil
 import tempfile
 import unittest
@@ -41,10 +42,10 @@ class ApiTest(unittest.TestCase):
 
     def test_login_dados_e_crud(self):
         headers = self.autenticar()
-        origem = {**headers, "Origin": "https://kg-frota.vercel.app"}
+        origem = {**headers, "Origin": "http://127.0.0.1:5173"}
         dados = self.client.get("/api/dados", headers=origem)
         self.assertEqual(dados.status_code, 200)
-        self.assertEqual(dados.headers["Access-Control-Allow-Origin"], "https://kg-frota.vercel.app")
+        self.assertEqual(dados.headers["Access-Control-Allow-Origin"], "http://127.0.0.1:5173")
 
         criado = self.client.post("/api/veiculos", headers=headers, json={
             "placa": "ABC1D23", "marca": "VW", "modelo": "Delivery",
@@ -66,6 +67,19 @@ class ApiTest(unittest.TestCase):
 
     def test_api_exige_token(self):
         self.assertEqual(self.client.get("/api/dados").status_code, 401)
+
+    def test_frontend_servido_pelo_flask(self):
+        pagina = self.client.get("/")
+        self.assertEqual(pagina.status_code, 200)
+        html = pagina.get_data(as_text=True)
+        self.assertIn('<div id="root"></div>', html)
+        asset = re.search(r'src="(/assets/[^"]+\.js)"', html).group(1)
+        respostas = [self.client.get(asset), self.client.get("/manifest.webmanifest"), self.client.get("/sw.js")]
+        self.assertTrue(all(resposta.status_code == 200 for resposta in respostas))
+        pagina.close()
+        for resposta in respostas:
+            resposta.close()
+        self.assertEqual(self.client.get("/legacy").status_code, 302)
 
     def test_fluxo_completo(self):
         headers = self.autenticar()
@@ -114,8 +128,8 @@ class ApiTest(unittest.TestCase):
         self.assertTrue(dados["expenses"])
         self.assertTrue(dados["documents"])
         self.assertEqual(self.client.options(
-            "/api/dados", headers={"Origin": "https://kg-frota.vercel.app"}
-        ).headers["Access-Control-Allow-Origin"], "https://kg-frota.vercel.app")
+            "/api/dados", headers={"Origin": "http://127.0.0.1:5173"}
+        ).headers["Access-Control-Allow-Origin"], "http://127.0.0.1:5173")
 
     def test_rejeita_status_invalido(self):
         resposta = self.client.post("/api/veiculos", headers=self.autenticar(), json={

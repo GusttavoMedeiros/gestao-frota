@@ -6,4 +6,8 @@ frota.db
 .env
 instance/
 uploads/
+web/node_modules/
+web/*.tsbuildinfo
+web/vite.config.js
+web/vite.config.d.ts
 .claude/settings.local.json

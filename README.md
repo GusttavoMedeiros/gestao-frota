@@ -1,35 +1,34 @@
-# Gestão de Frota
+# KG Frota
 
-Sistema interno para gestão de frota de veículos: cadastro de veículos, motoristas,
-controle de manutenções e abastecimentos.
+Aplicativo PWA para gestão de veículos, motoristas, abastecimentos,
+manutenções, despesas e documentos.
 
-## Tecnologia
+## Estrutura
 
-- Python 3 + Flask
-- Flask-SQLAlchemy (banco de dados SQLite, arquivo `frota.db`)
-- Bootstrap 5 (via CDN) para a interface
+- `app.py`, `api.py` e `models.py`: Flask, API autenticada e banco SQLite.
+- `web/`: código-fonte React/Vite da interface.
+- `frontend/`: build pronto servido pelo Flask em `/`.
+- `templates/` e `static/`: interface anterior, disponível em `/legacy`.
 
-## Como rodar o projeto
+## Executar
 
-1. Crie um ambiente virtual (recomendado):
+```bash
+python -m venv .venv
+.venv\Scripts\activate
+pip install -r requirements.txt
+python app.py
+```
 
-   ```
-   python -m venv venv
-   venv\Scripts\activate
-   ```
+Acesse `http://127.0.0.1:5000`.
 
-2. Instale as dependências:
+## Atualizar a interface
 
-   ```
-   pip install -r requirements.txt
-   ```
+```bash
+cd web
+npm ci
+npm test
+npm run build
+```
 
-3. Rode o servidor:
-
-   ```
-   python app.py
-   ```
-
-4. Acesse no navegador: http://127.0.0.1:5000
-
-O banco de dados (`frota.db`) é criado automaticamente na primeira execução.
+O build é gravado em `frontend/`. Ele deve ser versionado para que o
+PythonAnywhere não precise instalar Node.js durante a publicação.
