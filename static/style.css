@@ -566,6 +566,19 @@ input:-webkit-autofill:focus {
 .legend-dot.dot-manut { background: var(--chart-manut); }
 .chart-svg .barra-comb  { fill: var(--chart-comb); }
 .chart-svg .barra-manut { fill: var(--chart-manut); }
+
+/* Rosca (donut) de composição de custos */
+.donut-wrap { display: flex; align-items: center; gap: 2rem; flex-wrap: wrap; padding: 1.4rem 1.5rem; }
+.donut { width: 168px; height: 168px; flex-shrink: 0; }
+.donut circle { transition: stroke-dasharray .5s var(--ease); }
+.donut-total { fill: var(--text); font-family: var(--font-mono); font-size: 15px; font-weight: 600; }
+.donut-label { fill: var(--muted); font-size: 9px; letter-spacing: .02em; }
+.donut-legenda { display: flex; flex-direction: column; gap: 1rem; }
+.donut-legenda .item { display: flex; align-items: flex-start; gap: .6rem; }
+.donut-legenda .ponto { width: 12px; height: 12px; border-radius: 3px; flex-shrink: 0; margin-top: .2rem; }
+.donut-legenda .rotulo { font-size: .82rem; color: var(--muted); }
+.donut-legenda .valor { font-family: var(--font-mono); font-weight: 600; color: var(--text); }
+.donut-legenda .pct { color: var(--muted); font-size: .85rem; }
 .chart-tooltip {
   position: absolute;
   pointer-events: none;

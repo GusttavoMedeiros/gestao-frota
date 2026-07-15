@@ -4,7 +4,7 @@
    - Páginas e dados: sempre rede primeiro (nunca mostra dado velho).
    - Nunca intercepta POST (login, cadastros, exclusões passam direto). */
 
-const CACHE = 'frota-v5';
+const CACHE = 'frota-v6';
 const SHELL = [
   '/static/style.css',
   '/static/vendor/bootstrap/bootstrap.min.css',

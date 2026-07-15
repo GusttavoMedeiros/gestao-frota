@@ -77,6 +77,46 @@
   </div>
 </div>
 
+{% if totais.custo_total > 0 %}
+{% set r = 64 %}
+{% set C = 2 * 3.141592653589793 * r %}
+{% set len_comb = (totais.custo_combustivel / totais.custo_total) * C %}
+{% set len_manut = (totais.custo_manutencao / totais.custo_total) * C %}
+{% set pct_comb = (totais.custo_combustivel / totais.custo_total * 100) | round | int %}
+{% set pct_manut = 100 - pct_comb %}
+<div class="card mb-4">
+  <div class="card-header-flat"><i class="bi bi-pie-chart-fill text-secondary"></i> Composição dos custos</div>
+  <div class="donut-wrap">
+    <svg class="donut" viewBox="0 0 168 168" role="img"
+         aria-label="Combustível {{ pct_comb }}% e manutenção {{ pct_manut }}% do custo total do período.">
+      <circle cx="84" cy="84" r="{{ r }}" fill="none" stroke="var(--surface-2)" stroke-width="20"/>
+      <circle cx="84" cy="84" r="{{ r }}" fill="none" stroke="var(--chart-comb)" stroke-width="20"
+              stroke-dasharray="{{ len_comb }} {{ C }}" transform="rotate(-90 84 84)"/>
+      <circle cx="84" cy="84" r="{{ r }}" fill="none" stroke="var(--chart-manut)" stroke-width="20"
+              stroke-dasharray="{{ len_manut }} {{ C }}" stroke-dashoffset="{{ -len_comb }}" transform="rotate(-90 84 84)"/>
+      <text x="84" y="80" text-anchor="middle" class="donut-total">{{ totais.custo_total|brl }}</text>
+      <text x="84" y="97" text-anchor="middle" class="donut-label">total no período</text>
+    </svg>
+    <div class="donut-legenda">
+      <div class="item">
+        <span class="ponto" style="background: var(--chart-comb)"></span>
+        <div>
+          <div class="rotulo">Combustível</div>
+          <div><span class="valor">{{ totais.custo_combustivel|brl }}</span> <span class="pct">· {{ pct_comb }}%</span></div>
+        </div>
+      </div>
+      <div class="item">
+        <span class="ponto" style="background: var(--chart-manut)"></span>
+        <div>
+          <div class="rotulo">Manutenção</div>
+          <div><span class="valor">{{ totais.custo_manutencao|brl }}</span> <span class="pct">· {{ pct_manut }}%</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endif %}
+
 <div class="card mb-4">
   <div class="card-header-flat">
     <i class="bi bi-bar-chart-line text-secondary"></i> Evolução mensal de custos (R$)
