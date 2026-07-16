@@ -7,8 +7,8 @@ import secrets
 import time
 from datetime import date, datetime, timedelta
 
-from flask import (Flask, Response, flash, redirect, render_template, request,
-                   session, url_for)
+from flask import (Flask, Response, abort, flash, redirect, render_template,
+                   request, session, url_for)
 from sqlalchemy import func, inspect, text
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import joinedload
@@ -106,7 +106,8 @@ def cabecalhos_de_seguranca(resposta):
 
 # Endpoints acessíveis sem login (a própria tela de login, o primeiro acesso,
 # arquivos estáticos e o service worker do PWA).
-ENDPOINTS_PUBLICOS = {"login", "logout", "configurar", "service_worker", "static"}
+ENDPOINTS_PUBLICOS = {"login", "logout", "configurar", "service_worker", "static",
+                      "backup_automatico"}
 
 
 @app.before_request
@@ -904,16 +905,14 @@ def exportar_relatorio():
 
 # ---------------- Backup ----------------
 
-@app.route("/backup")
-def baixar_backup():
-    """Baixa uma cópia segura do banco (frota.db), mesmo com o sistema em uso.
-    Protegida por login como qualquer outra página."""
+def copia_segura_do_banco():
+    """Retorna os bytes de uma cópia consistente do frota.db (segura mesmo
+    com o site em uso), ou None se o banco não for SQLite."""
     import sqlite3
     import tempfile
     uri = app.config["SQLALCHEMY_DATABASE_URI"]
     if not uri.startswith("sqlite:///"):
-        flash("O backup por download só está disponível com banco SQLite.", "danger")
-        return redirect(url_for("index"))
+        return None
     caminho = uri.replace("sqlite:///", "", 1)
     with tempfile.NamedTemporaryFile(suffix=".db", delete=False) as arquivo:
         temporario = arquivo.name
@@ -926,9 +925,48 @@ def baixar_backup():
     with open(temporario, "rb") as arquivo:
         dados = arquivo.read()
     os.unlink(temporario)
+    return dados
+
+
+@app.route("/backup")
+def baixar_backup():
+    """Baixa uma cópia segura do banco (frota.db), mesmo com o sistema em uso.
+    Protegida por login como qualquer outra página."""
+    dados = copia_segura_do_banco()
+    if dados is None:
+        flash("O backup por download só está disponível com banco SQLite.", "danger")
+        return redirect(url_for("index"))
     nome = f"frota-{date.today().isoformat()}.db"
     return Response(dados, mimetype="application/octet-stream",
                     headers={"Content-Disposition": f"attachment; filename={nome}"})
+
+
+def ler_chave_backup():
+    """Lê a chave secreta do backup automático do arquivo chave_backup.txt
+    (na mesma pasta do app). Se o arquivo não existir, a rota fica desligada."""
+    caminho = os.path.join(os.path.abspath(os.path.dirname(__file__)), "chave_backup.txt")
+    try:
+        with open(caminho, encoding="utf-8") as arquivo:
+            chave = arquivo.read().strip()
+        return chave if len(chave) >= 32 else None  # chave curta = insegura = desligado
+    except OSError:
+        return None
+
+
+@app.route("/backup-automatico")
+def backup_automatico():
+    """Usada pelo robô do GitHub Actions (1x por dia). Sem login: a proteção é
+    uma chave secreta longa que só existe no servidor e no cofre do GitHub."""
+    import hmac
+    chave_correta = ler_chave_backup()
+    chave_recebida = request.args.get("chave", "")
+    # compare_digest evita ataque de medição de tempo na comparação
+    if not chave_correta or not hmac.compare_digest(chave_recebida, chave_correta):
+        abort(404)  # não revela que a rota existe
+    dados = copia_segura_do_banco()
+    if dados is None:
+        abort(404)
+    return Response(dados, mimetype="application/octet-stream")
 
 
 # ---------------- Abastecimentos ----------------

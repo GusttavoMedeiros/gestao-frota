@@ -1,101 +1,93 @@
-# Backup automático diário (GitHub)
+# Backup automático diário (GitHub Actions)
 
-Todo dia, uma cópia do banco (`frota.db`) é enviada automaticamente para um
-repositório **privado** no GitHub. Cada dia vira um ponto de restauração:
-dá para recuperar o banco de qualquer data pelo histórico de commits.
+Todo dia à meia-noite, um robô gratuito do próprio GitHub baixa o banco
+(`frota.db`) do site e guarda no repositório **privado** `frota-backups`.
+Cada dia vira um ponto de restauração: dá para recuperar o banco de
+qualquer data pelo histórico de commits.
 
-> Por que GitHub e não e-mail? O plano grátis do PythonAnywhere **bloqueia
-> envio de e-mail** (SMTP). O GitHub funciona normalmente e ainda guarda o
-> histórico de versões de graça.
+> Por que assim? O plano grátis do PythonAnywhere não tem mais tarefas
+> agendadas (mudança de jan/2026) e também bloqueia e-mail. Então quem
+> agenda é o GitHub: ele **busca** o backup no site, em vez de o site enviar.
 
-A configuração é feita **uma única vez**, em 4 passos (uns 10 minutos).
+Como funciona a segurança: o site tem uma rota especial de backup protegida
+por uma **chave secreta longa** (não usa login). A chave existe em só dois
+lugares: um arquivo no servidor e o cofre de segredos do GitHub. Sem a chave,
+a rota responde "página não encontrada", como se não existisse.
+
+A configuração é feita uma única vez, em 4 passos.
 
 ---
 
-## Passo 1 — Criar o repositório privado
+## Passo 1 — Criar a chave secreta no servidor
 
-1. No GitHub, clique em **New repository**.
-2. Nome: `frota-backups`.
-3. Marque **Private** (importante: o banco tem dados da empresa).
-4. Marque **Add a README file** (só para o repositório não nascer vazio).
-5. Clique em **Create repository**.
-
-## Passo 2 — Criar o token de acesso
-
-O token é a "senha" que o servidor usa para enviar o backup. Ele só terá
-permissão nesse repositório de backups — em nenhum outro.
-
-1. No GitHub: foto de perfil → **Settings** → **Developer settings** →
-   **Personal access tokens** → **Fine-grained tokens** → **Generate new token**.
-2. Preencha:
-   - **Token name:** `backup-frota`
-   - **Expiration:** `Custom` → escolha a data mais distante possível
-     (anote no calendário: quando vencer, é só gerar outro e repetir o passo 3).
-   - **Repository access:** `Only select repositories` → selecione `frota-backups`.
-   - **Permissions** → **Repository permissions** → **Contents:** `Read and write`.
-3. Clique em **Generate token** e **copie o token** (começa com `github_pat_`).
-   Ele só aparece uma vez.
-
-## Passo 3 — Preparar a pasta no PythonAnywhere
-
-No PythonAnywhere, abra **Consoles → Bash** e rode, uma linha por vez
-(troque `SEU_USUARIO_GITHUB` e `SEU_TOKEN` pelos seus):
+No PythonAnywhere, abra **Consoles → Bash** e rode:
 
 ```bash
-git clone https://SEU_TOKEN@github.com/SEU_USUARIO_GITHUB/frota-backups.git ~/frota-backups
-cd ~/frota-backups
-git config user.name "Backup automatico"
-git config user.email "backup@frota.local"
+python3.10 -c "import secrets; print(secrets.token_urlsafe(48))" > ~/gestao-frota/chave_backup.txt
+cat ~/gestao-frota/chave_backup.txt
 ```
 
-Teste o script manualmente:
+A segunda linha mostra a chave (um texto longo aleatório). **Copie-a** —
+vamos usá-la no passo 2. Depois vá na aba **Web** e clique em **Reload**.
 
-```bash
-python3.10 ~/gestao-frota/backup_para_github.py
-```
+> O arquivo `chave_backup.txt` fica só no servidor. Ele está no `.gitignore`,
+> então nunca sobe para o GitHub junto com o código.
 
-Deve aparecer `Backup enviado para o GitHub com sucesso.` — confira no site do
-GitHub se o arquivo `frota.db` apareceu no repositório `frota-backups`.
+## Passo 2 — Guardar a chave no cofre do GitHub
 
-## Passo 4 — Agendar para rodar todo dia
+1. Abra o repositório **frota-backups** no GitHub.
+2. **Settings** (do repositório) → **Secrets and variables** → **Actions**.
+3. Botão **New repository secret**:
+   - Name: `CHAVE_BACKUP`
+   - Secret: cole a chave copiada no passo 1
+4. **Add secret**.
 
-1. No PythonAnywhere, abra a aba **Tasks**.
-2. Em **Scheduled tasks**, escolha um horário (ex.: `03:00` — o horário é UTC,
-   que dá meia-noite no Brasil) e cole o comando:
+## Passo 3 — Criar o robô (workflow)
+
+1. Ainda no repositório **frota-backups**: **Add file → Create new file**.
+2. No campo do nome, digite exatamente (as barras criam as pastas):
 
    ```
-   python3.10 /home/SEU_USUARIO_PYTHONANYWHERE/gestao-frota/backup_para_github.py
+   .github/workflows/backup.yml
    ```
 
-3. Clique em **Create**. Pronto — backup diário automático.
+3. Cole dentro o conteúdo do arquivo `workflow-backup.yml` que está no
+   repositório `gestao-frota` (abra-o lá, clique no botão de copiar).
+4. **Commit changes**.
+
+## Passo 4 — Testar sem esperar a meia-noite
+
+1. No repositório **frota-backups**, abra a aba **Actions**.
+2. Clique em **Backup diário do frota.db** (menu à esquerda) →
+   botão **Run workflow** → **Run workflow** (verde).
+3. Aguarde ~30 segundos e recarregue a página. Bolinha **verde** = funcionou:
+   o arquivo `frota.db` aparece/atualiza na página inicial do repositório.
+   Bolinha vermelha = clique nela e me mande o texto do erro.
 
 ---
 
 ## Como restaurar um backup
 
-1. No GitHub, abra o repositório `frota-backups` → arquivo `frota.db` →
-   **History** (histórico de commits).
-2. Clique no commit do dia desejado → clique no arquivo → **Download raw file**.
-3. No PythonAnywhere, aba **Files**, entre em `gestao-frota/` e envie o arquivo
-   baixado no lugar do `frota.db` atual (faça uma cópia do atual antes).
-4. Na aba **Web**, clique em **Reload**.
+1. No repositório `frota-backups` → arquivo `frota.db` → **History**.
+2. Clique no commit do dia desejado → no arquivo → **Download raw file**.
+3. No PythonAnywhere, aba **Files**, entre em `gestao-frota/` e suba o
+   arquivo baixado no lugar do `frota.db` atual (guarde uma cópia do atual).
+4. Aba **Web** → **Reload**.
 
 ## Backup manual (extra)
 
-Dentro do próprio sistema, no menu lateral, há o link **Baixar backup** — ele
-baixa uma cópia segura do banco na hora, direto no seu computador ou celular.
+No menu lateral do sistema há o link **Baixar backup** — baixa uma cópia
+segura do banco na hora, no computador ou no celular.
 
 ## Avisos importantes
 
-- **O token expira.** Quando vencer, o backup para de funcionar em silêncio.
-  Anote a data no calendário. Para renovar: gere um novo token (passo 2) e rode
-  no Bash do PythonAnywhere:
-  ```bash
-  cd ~/frota-backups
-  git remote set-url origin https://NOVO_TOKEN@github.com/SEU_USUARIO_GITHUB/frota-backups.git
-  ```
-- **Confira de vez em quando** (1x por mês) se o repositório `frota-backups`
-  tem commits recentes. A aba **Tasks** do PythonAnywhere também mostra o log
-  da última execução.
-- O plano grátis do PythonAnywhere exige que você faça login no site deles a
-  cada 3 meses — senão a conta (e o backup) param.
+- **Confira 1x por mês** se o repositório `frota-backups` tem commits
+  recentes. Se o robô falhar, o GitHub também te avisa por e-mail.
+- O GitHub pode desativar robôs de repositórios parados há 60 dias — como o
+  banco muda todo dia, isso não deve acontecer; se um dia ele avisar por
+  e-mail, é só clicar no botão de reativar.
+- O plano grátis do PythonAnywhere continua exigindo **login no site deles
+  periodicamente** para o web app não hibernar — eles avisam por e-mail;
+  entre e clique no botão de renovar quando pedir.
+- Se um dia a chave vazar, gere outra (passo 1) e atualize o segredo
+  (passo 2). Nada mais muda.

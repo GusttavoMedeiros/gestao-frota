@@ -1,0 +1,40 @@
+# Este arquivo NÃO fica neste repositório. Ele deve ser criado no repositório
+# PRIVADO frota-backups, no caminho exato: .github/workflows/backup.yml
+# (o BACKUP.md explica o passo a passo)
+
+name: Backup diário do frota.db
+
+on:
+  schedule:
+    - cron: "0 3 * * *"   # 03:00 UTC = meia-noite no Brasil
+  workflow_dispatch: {}    # permite rodar manualmente pelo botão "Run workflow"
+
+permissions:
+  contents: write
+
+jobs:
+  backup:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Abrir o repositório
+        uses: actions/checkout@v4
+
+      - name: Baixar o banco do site
+        run: |
+          curl -fsS --max-time 120 \
+            "https://gusttavo01.pythonanywhere.com/backup-automatico?chave=${{ secrets.CHAVE_BACKUP }}" \
+            -o frota.db.novo
+          # Confere se o que veio é mesmo um banco SQLite antes de aceitar
+          if ! head -c 15 frota.db.novo | grep -aq "SQLite format 3"; then
+            echo "ERRO: o arquivo baixado não é um banco SQLite (chave errada ou site fora do ar?)"
+            exit 1
+          fi
+          mv frota.db.novo frota.db
+
+      - name: Guardar no repositório
+        run: |
+          git config user.name "Backup automatico"
+          git config user.email "backup@frota.local"
+          git add frota.db
+          git commit -m "Backup automático de $(date -u +%d/%m/%Y)" || echo "Sem mudanças no banco hoje."
+          git push
