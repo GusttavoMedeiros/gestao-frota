@@ -78,6 +78,9 @@ class Abastecimento(db.Model):
     litros = db.Column(db.Float, nullable=False)
     valor_total = db.Column(db.Float, nullable=False)
     quilometragem = db.Column(db.Integer, nullable=False)
+    # True = encheu o tanque; False = abastecimento parcial. Registros antigos
+    # (NULL) são tratados como tanque cheio para não quebrar o histórico.
+    tanque_cheio = db.Column(db.Boolean, nullable=True, default=True)
 
     def __repr__(self):
         return f"<Abastecimento veiculo {self.veiculo_id} em {self.data}>"

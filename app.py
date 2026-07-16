@@ -46,6 +46,7 @@ def garantir_colunas():
     novas = {
         "veiculo": {"venc_licenciamento": "DATE", "venc_seguro": "DATE"},
         "motorista": {"validade_cnh": "DATE"},
+        "abastecimento": {"tanque_cheio": "BOOLEAN"},
     }
     inspetor = inspect(db.engine)
     tabelas = inspetor.get_table_names()
@@ -326,6 +327,47 @@ def atualizar_odometro(veiculo, km):
         veiculo.quilometragem = km
 
 
+# Maior salto de km aceito entre o último registro conhecido e um novo registro.
+# Serve para barrar erros de digitação (um zero a mais vira 10x o valor).
+LIMITE_SALTO_KM = 30000
+
+
+def maior_km_registrado(veiculo_id, ignorar_manutencao=None, ignorar_abastecimento=None):
+    """Maior km entre manutenções e abastecimentos do veículo, podendo ignorar
+    o próprio registro que está sendo editado."""
+    consulta_m = db.session.query(func.max(Manutencao.quilometragem)).filter(
+        Manutencao.veiculo_id == veiculo_id)
+    if ignorar_manutencao:
+        consulta_m = consulta_m.filter(Manutencao.id != ignorar_manutencao)
+    consulta_a = db.session.query(func.max(Abastecimento.quilometragem)).filter(
+        Abastecimento.veiculo_id == veiculo_id)
+    if ignorar_abastecimento:
+        consulta_a = consulta_a.filter(Abastecimento.id != ignorar_abastecimento)
+    valores = [v for v in (consulta_m.scalar(), consulta_a.scalar()) if v is not None]
+    return max(valores) if valores else None
+
+
+def validar_salto_km(veiculo, km, ignorar_manutencao=None, ignorar_abastecimento=None):
+    """Barra km muito acima do último registro conhecido (provável erro de digitação).
+    No primeiro registro do veículo não há base confiável, então não valida."""
+    base = maior_km_registrado(veiculo.id, ignorar_manutencao, ignorar_abastecimento)
+    if base is not None and km > base + LIMITE_SALTO_KM:
+        raise ErroFormulario(
+            f"O km informado ({formato_milhar(km)}) está {formato_milhar(km - base)} km acima "
+            f"do último registro deste veículo ({formato_milhar(base)}). "
+            f"Confira se não há um dígito a mais. O sistema aceita no máximo "
+            f"{formato_milhar(LIMITE_SALTO_KM)} km de diferença.")
+
+
+def recalcular_odometro(veiculo):
+    """Recalcula o odômetro a partir dos registros — permite que ele DESÇA
+    quando um km digitado errado é corrigido ou excluído."""
+    db.session.flush()  # garante que a alteração pendente entre na conta
+    maior = maior_km_registrado(veiculo.id)
+    if maior is not None:
+        veiculo.quilometragem = maior
+
+
 def veiculos_ordenados():
     return Veiculo.query.order_by(Veiculo.placa).all()
 
@@ -505,6 +547,15 @@ def editar_veiculo(veiculo_id):
 @app.route("/veiculos/<int:veiculo_id>/excluir", methods=["POST"])
 def excluir_veiculo(veiculo_id):
     veiculo = Veiculo.query.get_or_404(veiculo_id)
+    # Veículo com histórico não pode ser excluído: apagaria de vez todas as
+    # manutenções e abastecimentos dele. O caminho certo é marcar como inativo.
+    registros = (Manutencao.query.filter_by(veiculo_id=veiculo.id).count()
+                 + Abastecimento.query.filter_by(veiculo_id=veiculo.id).count())
+    if registros > 0:
+        flash(f"O veículo {veiculo.placa} tem {registros} registro(s) de manutenção/abastecimento. "
+              "Para preservar o histórico, edite o veículo e mude o status para \"Inativo\" "
+              "em vez de excluir.", "danger")
+        return redirect(url_for("listar_veiculos"))
     db.session.delete(veiculo)
     db.session.commit()
     flash("Veículo removido.", "success")
@@ -610,7 +661,11 @@ def preencher_manutencao(manutencao):
     manutencao.proxima_data = ler_data("proxima_data", "Próxima manutenção (data)", obrigatorio=False)
     manutencao.proxima_km = ler_numero("proxima_km", "Próxima manutenção (km)",
                                        obrigatorio=False, inteiro=True, minimo=0)
-    atualizar_odometro(veiculo, manutencao.quilometragem)
+    validar_salto_km(veiculo, manutencao.quilometragem, ignorar_manutencao=manutencao.id)
+    if manutencao.id:
+        recalcular_odometro(veiculo)  # edição pode corrigir km para baixo
+    else:
+        atualizar_odometro(veiculo, manutencao.quilometragem)
 
 
 @app.route("/manutencoes/nova", methods=["GET", "POST"])
@@ -655,7 +710,9 @@ def editar_manutencao(manutencao_id):
 @app.route("/manutencoes/<int:manutencao_id>/excluir", methods=["POST"])
 def excluir_manutencao(manutencao_id):
     manutencao = Manutencao.query.get_or_404(manutencao_id)
+    veiculo = manutencao.veiculo
     db.session.delete(manutencao)
+    recalcular_odometro(veiculo)  # o odômetro pode descer se o km excluído era o maior
     db.session.commit()
     flash("Registro de manutenção removido.", "success")
     return redirect(url_for("listar_manutencoes"))
@@ -726,9 +783,18 @@ def dados_relatorio(inicio, fim):
         km_rodados = consumo = custo_km = None
         if len(registros) >= 2:
             km_rodados = registros[-1].quilometragem - registros[0].quilometragem
-            combustivel_usado = sum(a.litros for a in registros[1:])
-            if km_rodados > 0 and combustivel_usado > 0:
-                consumo = km_rodados / combustivel_usado
+            # Consumo medido só entre tanques cheios (parciais acumulam litros).
+            km_medidos = litros_medidos = 0.0
+            km_cheio, litros_acum = None, 0.0
+            for a in registros:
+                litros_acum += a.litros
+                if eh_tanque_cheio(a):
+                    if km_cheio is not None and a.quilometragem > km_cheio and litros_acum > 0:
+                        km_medidos += a.quilometragem - km_cheio
+                        litros_medidos += litros_acum
+                    km_cheio, litros_acum = a.quilometragem, 0.0
+            if km_medidos > 0 and litros_medidos > 0:
+                consumo = km_medidos / litros_medidos
         linha["custo_total"] = linha["custo_combustivel"] + linha["custo_manutencao"]
         if km_rodados and linha["custo_total"]:
             custo_km = linha["custo_total"] / km_rodados
@@ -836,18 +902,57 @@ def exportar_relatorio():
                     headers={"Content-Disposition": f"attachment; filename={nome}"})
 
 
+# ---------------- Backup ----------------
+
+@app.route("/backup")
+def baixar_backup():
+    """Baixa uma cópia segura do banco (frota.db), mesmo com o sistema em uso.
+    Protegida por login como qualquer outra página."""
+    import sqlite3
+    import tempfile
+    uri = app.config["SQLALCHEMY_DATABASE_URI"]
+    if not uri.startswith("sqlite:///"):
+        flash("O backup por download só está disponível com banco SQLite.", "danger")
+        return redirect(url_for("index"))
+    caminho = uri.replace("sqlite:///", "", 1)
+    with tempfile.NamedTemporaryFile(suffix=".db", delete=False) as arquivo:
+        temporario = arquivo.name
+    origem = sqlite3.connect(caminho)
+    destino = sqlite3.connect(temporario)
+    with destino:
+        origem.backup(destino)  # cópia consistente, sem risco de pegar escrita no meio
+    origem.close()
+    destino.close()
+    with open(temporario, "rb") as arquivo:
+        dados = arquivo.read()
+    os.unlink(temporario)
+    nome = f"frota-{date.today().isoformat()}.db"
+    return Response(dados, mimetype="application/octet-stream",
+                    headers={"Content-Disposition": f"attachment; filename={nome}"})
+
+
 # ---------------- Abastecimentos ----------------
 
+def eh_tanque_cheio(abastecimento):
+    """Registros antigos (antes do campo existir) contam como tanque cheio."""
+    return abastecimento.tanque_cheio is None or bool(abastecimento.tanque_cheio)
+
+
 def calcular_consumos(abastecimentos):
-    """Km/L de cada abastecimento com base no anterior do mesmo veículo."""
-    anterior_por_veiculo = {}
+    """Km/L medido de tanque cheio a tanque cheio. Abastecimentos parciais
+    apenas acumulam litros e não geram medição própria — só assim o número
+    reflete o consumo real do veículo."""
+    estado = {}  # por veículo: km do último tanque cheio + litros acumulados desde então
     for a in sorted(abastecimentos, key=lambda x: (x.veiculo_id, x.quilometragem)):
-        anterior = anterior_por_veiculo.get(a.veiculo_id)
-        if anterior and a.quilometragem > anterior.quilometragem and a.litros > 0:
-            a.consumo = (a.quilometragem - anterior.quilometragem) / a.litros
-        else:
-            a.consumo = None
-        anterior_por_veiculo[a.veiculo_id] = a
+        e = estado.setdefault(a.veiculo_id, {"km_cheio": None, "litros": 0.0})
+        a.consumo = None
+        e["litros"] += a.litros
+        if eh_tanque_cheio(a):
+            if (e["km_cheio"] is not None and a.quilometragem > e["km_cheio"]
+                    and e["litros"] > 0):
+                a.consumo = (a.quilometragem - e["km_cheio"]) / e["litros"]
+            e["km_cheio"] = a.quilometragem
+            e["litros"] = 0.0
     return abastecimentos
 
 
@@ -883,7 +988,12 @@ def preencher_abastecimento(abastecimento):
     abastecimento.litros = ler_numero("litros", "Litros", positivo=True)
     abastecimento.valor_total = ler_numero("valor_total", "Valor total", minimo=0)
     abastecimento.quilometragem = ler_numero("quilometragem", "KM na data", inteiro=True, minimo=0)
-    atualizar_odometro(veiculo, abastecimento.quilometragem)
+    abastecimento.tanque_cheio = request.form.get("tanque_cheio") == "1"
+    validar_salto_km(veiculo, abastecimento.quilometragem, ignorar_abastecimento=abastecimento.id)
+    if abastecimento.id:
+        recalcular_odometro(veiculo)  # edição pode corrigir km para baixo
+    else:
+        atualizar_odometro(veiculo, abastecimento.quilometragem)
 
 
 @app.route("/abastecimentos/novo", methods=["GET", "POST"])
@@ -931,7 +1041,9 @@ def editar_abastecimento(abastecimento_id):
 @app.route("/abastecimentos/<int:abastecimento_id>/excluir", methods=["POST"])
 def excluir_abastecimento(abastecimento_id):
     abastecimento = Abastecimento.query.get_or_404(abastecimento_id)
+    veiculo = abastecimento.veiculo
     db.session.delete(abastecimento)
+    recalcular_odometro(veiculo)  # o odômetro pode descer se o km excluído era o maior
     db.session.commit()
     flash("Abastecimento removido.", "success")
     return redirect(url_for("listar_abastecimentos"))
