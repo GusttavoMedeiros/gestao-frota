@@ -60,6 +60,17 @@
       <label class="form-label">Valor total (R$) <span class="req">*</span></label>
       <input type="text" inputmode="decimal" name="valor_total" class="form-control" value="{{ f.get('valor_total', ('%.2f'|format(abastecimento.valor_total)) if abastecimento else '') }}" required placeholder="Ex.: 280,00">
     </div>
+    <div class="col-12">
+      {% if f %}{% set cheio = f.get('tanque_cheio') == '1' %}
+      {% elif abastecimento %}{% set cheio = abastecimento.tanque_cheio is none or abastecimento.tanque_cheio %}
+      {% else %}{% set cheio = true %}{% endif %}
+      <div class="form-check">
+        <input class="form-check-input" type="checkbox" name="tanque_cheio" value="1" id="tanque_cheio" {% if cheio %}checked{% endif %}>
+        <label class="form-check-label" for="tanque_cheio">Encheu o tanque</label>
+      </div>
+      <small class="text-muted">Desmarque em abastecimentos parciais (ex.: "põe R$ 200"). O consumo (km/L)
+      só é medido entre dois tanques cheios — parciais entram na conta, mas não geram medição própria.</small>
+    </div>
   </div>
   <div class="form-actions">
     <button type="submit" class="btn btn-primary"><i class="bi bi-check-lg me-1"></i>Salvar</button>
