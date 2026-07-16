@@ -6,3 +6,4 @@ frota.db
 .env
 instance/
 .claude/settings.local.json
+chave_backup.txt
