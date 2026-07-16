@@ -1,0 +1,80 @@
+{% extends "base.html" %}
+{% block title %}{{ "Editar" if abastecimento else "Novo" }} abastecimento — Gestão de Frota{% endblock %}
+{% block content %}
+{% set f = request.form %}
+<nav class="breadcrumb">
+  <a href="{{ url_for('listar_abastecimentos') }}">Abastecimentos</a>
+  <span class="mx-2 text-muted">/</span>
+  <span class="active">{{ "Editar registro" if abastecimento else "Novo abastecimento" }}</span>
+</nav>
+
+<div class="page-header">
+  <h1 class="page-title">{{ "Editar abastecimento" if abastecimento else "Novo abastecimento" }}</h1>
+</div>
+
+<form method="post" class="card form-card">
+  <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+  <div class="row g-3">
+    <div class="col-md-6">
+      <label class="form-label">Veículo <span class="req">*</span></label>
+      {% set vsel = f.get('veiculo_id', (abastecimento.veiculo_id|string) if abastecimento else '') %}
+      <select name="veiculo_id" class="form-select" required>
+        <option value="" disabled {% if not vsel %}selected{% endif %}>Selecione...</option>
+        {% for v in veiculos %}
+        <option value="{{ v.id }}" {% if vsel == v.id|string %}selected{% endif %}>{{ v.placa }} — {{ v.marca }} {{ v.modelo }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div class="col-md-6">
+      <label class="form-label">Motorista</label>
+      {% set msel = f.get('motorista_id', (abastecimento.motorista_id|string) if abastecimento and abastecimento.motorista_id else '') %}
+      <select name="motorista_id" class="form-select">
+        <option value="">Não informado</option>
+        {% for m in motoristas %}
+        <option value="{{ m.id }}" {% if msel == m.id|string %}selected{% endif %}>{{ m.nome }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div class="col-md-4">
+      <label class="form-label">Data <span class="req">*</span></label>
+      <input type="date" name="data" class="form-control" value="{{ f.get('data', abastecimento.data.isoformat() if abastecimento else today) }}" required>
+    </div>
+    <div class="col-md-4">
+      <label class="form-label">Combustível <span class="req">*</span></label>
+      {% set csel = f.get('tipo_combustivel', abastecimento.tipo_combustivel if abastecimento else 'gasolina') %}
+      <select name="tipo_combustivel" class="form-select" required>
+        {% for tipo in ['gasolina', 'etanol', 'diesel', 'gnv'] %}
+        <option value="{{ tipo }}" {% if csel == tipo %}selected{% endif %}>{{ tipo|capitalize }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div class="col-md-4">
+      <label class="form-label">KM na data <span class="req">*</span></label>
+      <input type="text" inputmode="numeric" name="quilometragem" class="form-control" value="{{ f.get('quilometragem', abastecimento.quilometragem if abastecimento else '') }}" required placeholder="Ex.: 85.000">
+    </div>
+    <div class="col-md-6">
+      <label class="form-label">Litros <span class="req">*</span></label>
+      <input type="text" inputmode="decimal" name="litros" class="form-control" value="{{ f.get('litros', ('%.2f'|format(abastecimento.litros)) if abastecimento else '') }}" required placeholder="Ex.: 45,50">
+    </div>
+    <div class="col-md-6">
+      <label class="form-label">Valor total (R$) <span class="req">*</span></label>
+      <input type="text" inputmode="decimal" name="valor_total" class="form-control" value="{{ f.get('valor_total', ('%.2f'|format(abastecimento.valor_total)) if abastecimento else '') }}" required placeholder="Ex.: 280,00">
+    </div>
+    <div class="col-12">
+      {% if f %}{% set cheio = f.get('tanque_cheio') == '1' %}
+      {% elif abastecimento %}{% set cheio = abastecimento.tanque_cheio is none or abastecimento.tanque_cheio %}
+      {% else %}{% set cheio = true %}{% endif %}
+      <div class="form-check">
+        <input class="form-check-input" type="checkbox" name="tanque_cheio" value="1" id="tanque_cheio" {% if cheio %}checked{% endif %}>
+        <label class="form-check-label" for="tanque_cheio">Encheu o tanque</label>
+      </div>
+      <small class="text-muted">Desmarque em abastecimentos parciais (ex.: "põe R$ 200"). O consumo (km/L)
+      só é medido entre dois tanques cheios — parciais entram na conta, mas não geram medição própria.</small>
+    </div>
+  </div>
+  <div class="form-actions">
+    <button type="submit" class="btn btn-primary"><i class="bi bi-check-lg me-1"></i>Salvar</button>
+    <a href="{{ url_for('listar_abastecimentos') }}" class="btn btn-outline-secondary">Cancelar</a>
+  </div>
+</form>
+{% endblock %}

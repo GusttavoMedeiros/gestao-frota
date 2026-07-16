@@ -1,0 +1,52 @@
+{% extends "base.html" %}
+{% block title %}Abastecimentos — Gestão de Frota{% endblock %}
+{% block content %}
+<div class="page-header">
+  <div>
+    <h1 class="page-title">Abastecimentos</h1>
+    <p class="page-subtitle">{{ abastecimentos|length }} registro(s)</p>
+  </div>
+  <a href="{{ url_for('novo_abastecimento') }}" class="btn btn-primary"><i class="bi bi-plus-lg me-1"></i>Novo abastecimento</a>
+</div>
+
+<div class="card table-card">
+  {% if abastecimentos %}
+  <div class="table-responsive">
+    <table class="table table-mobile">
+      <thead>
+        <tr><th>Veículo</th><th>Motorista</th><th>Data</th><th>Combustível</th><th class="text-end">Litros</th><th class="text-end">Valor</th><th class="text-end">KM</th><th class="text-end">Consumo</th><th class="text-end">Ações</th></tr>
+      </thead>
+      <tbody>
+        {% for a in abastecimentos %}
+        <tr>
+          <td class="cell-strong" data-label="Veículo">{{ a.veiculo.placa }}</td>
+          <td class="cell-muted" data-label="Motorista">{{ a.motorista.nome if a.motorista else "—" }}</td>
+          <td class="cell-muted" data-label="Data">{{ a.data|data_br }}</td>
+          <td data-label="Combustível"><span class="badge-soft badge-soft-secondary">{{ a.tipo_combustivel|capitalize }}</span></td>
+          <td class="text-end" data-label="Litros">{{ "%.1f"|format(a.litros) }} L{% if a.tanque_cheio is not none and not a.tanque_cheio %} <span class="badge-soft badge-soft-warning">parcial</span>{% endif %}</td>
+          <td class="text-end" data-label="Valor">{{ a.valor_total|brl }}</td>
+          <td class="text-end" data-label="KM">{{ a.quilometragem|milhar }}</td>
+          <td class="text-end" data-label="Consumo">{% if a.consumo %}{{ "%.1f"|format(a.consumo) }} km/L{% else %}—{% endif %}</td>
+          <td class="text-end text-nowrap">
+            <a href="{{ url_for('editar_abastecimento', abastecimento_id=a.id) }}" class="btn btn-sm btn-ghost" title="Editar"><i class="bi bi-pencil"></i></a>
+            <form action="{{ url_for('excluir_abastecimento', abastecimento_id=a.id) }}" method="post" class="d-inline" data-confirm="Remover este registro de abastecimento?">
+              <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+              <button type="submit" class="btn btn-sm btn-ghost danger" title="Excluir"><i class="bi bi-trash"></i></button>
+            </form>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  <p class="text-muted small px-3 pb-2 mb-0">O consumo (km/L) é medido de um tanque cheio ao próximo.
+  Abastecimentos parciais entram na soma de litros, mas não geram medição própria.</p>
+  {% else %}
+  <div class="empty-state">
+    <i class="bi bi-fuel-pump"></i>
+    <p>Nenhum abastecimento registrado ainda.</p>
+    <a href="{{ url_for('novo_abastecimento') }}" class="btn btn-primary btn-sm"><i class="bi bi-plus-lg me-1"></i>Registrar o primeiro abastecimento</a>
+  </div>
+  {% endif %}
+</div>
+{% endblock %}
